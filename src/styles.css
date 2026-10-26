@@ -506,6 +506,93 @@ img { max-width: 100%; display: block; }
   padding: 20px;
 }
 
+.privacy-document {
+  max-width: 860px;
+}
+
+.privacy-document h1 {
+  max-width: 18ch;
+  margin: 16px 0 8px;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1.05;
+}
+
+.privacy-updated {
+  color: var(--muted);
+}
+
+.privacy-operator {
+  color: var(--text-soft);
+}
+
+.privacy-lead {
+  max-width: 72ch;
+  margin: 28px 0;
+  color: var(--text-soft);
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.privacy-launch-warning {
+  margin: 28px 0;
+  padding: 18px 20px;
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  border-radius: 16px;
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--text-soft);
+}
+
+.privacy-launch-warning strong {
+  color: #fcd34d;
+}
+
+.privacy-launch-warning p {
+  margin: 8px 0 0;
+  line-height: 1.65;
+}
+
+.privacy-policy-section {
+  margin-top: 32px;
+}
+
+.privacy-policy-section h2 {
+  margin: 0 0 12px;
+  font-size: 1.45rem;
+}
+
+.privacy-policy-section p,
+.privacy-policy-section li,
+.privacy-disclaimer {
+  color: var(--text-soft);
+  line-height: 1.75;
+}
+
+.privacy-policy-section ul {
+  display: grid;
+  gap: 10px;
+  padding-left: 24px;
+}
+
+.privacy-policy-section code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text);
+}
+
+.privacy-policy-section a {
+  color: #9fe8d2;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.privacy-disclaimer {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+
 .privacy-item {
   display: flex;
   align-items: center;
@@ -539,6 +626,15 @@ img { max-width: 100%; display: block; }
   border: 0;
   background: transparent;
   color: var(--text-soft);
+}
+
+.footer-links a {
+  color: var(--text-soft);
+}
+
+.footer-links a:hover,
+.footer-links button:hover {
+  color: var(--text);
 }
 
 .auth-page {
@@ -647,6 +743,19 @@ img { max-width: 100%; display: block; }
 
 .field-group small {
   color: #fca5a5;
+}
+
+.auth-privacy-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth-privacy-note a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .form-error {

@@ -784,6 +784,7 @@ function App() {
       )}
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/login" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
         <Route path="/register" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
         <Route
@@ -900,6 +901,114 @@ function App() {
         />
       </Routes>
     </div>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <main className="page-shell privacy-page">
+      <section className="section">
+        <div className="container privacy-document">
+          <span className="eyebrow">Privacy notice</span>
+          <h1>How Ruveon handles your information</h1>
+          <p className="privacy-updated">Last updated: October 26, 2026</p>
+          <p className="privacy-lead">
+            Ruveon is a personal finance tracker. This notice explains what information the app uses,
+            why it is used, and what happens when you connect Ruvi on WhatsApp.
+          </p>
+          <p className="privacy-operator">
+            <strong>Service operator:</strong> Ruveon AI, operated by Anmol Sharma.
+          </p>
+
+          <div className="privacy-launch-warning" role="note">
+            <strong>Before inviting the public</strong>
+            <p>
+              Account deletion is not currently self-service. Confirm the privacy inbox below is
+              monitored, and establish a reliable account deletion and data-retention process before
+              inviting the public.
+            </p>
+          </div>
+
+          <section className="privacy-policy-section">
+            <h2>Information you provide</h2>
+            <ul>
+              <li>
+                <strong>Account details:</strong> your name, email address, and password. Passwords
+                are stored as password hashes; the app does not store the original password.
+              </li>
+              <li>
+                <strong>Finance records:</strong> transactions and the details you enter, such as
+                amounts, dates, categories, merchants, payment methods, and notes, plus budgets and
+                savings goals.
+              </li>
+              <li>
+                <strong>WhatsApp connection:</strong> if you choose to link WhatsApp, the WhatsApp
+                account identifier and link status are stored. Incoming message text is processed to
+                handle link/unlink commands or answer your question. Message identifiers are retained
+                to prevent duplicate processing; the app does not save the message text as chat history.
+              </li>
+            </ul>
+          </section>
+
+          <section className="privacy-policy-section">
+            <h2>How your information is used and shared</h2>
+            <ul>
+              <li>
+                Ruveon uses account and finance records to provide sign-in, transaction, budget,
+                savings, dashboard, and reporting features.
+              </li>
+              <li>
+                If you message Ruvi on WhatsApp, your question and a limited summary of your current
+                month’s income, expenses, cash flow, budget, transaction count, and savings goals are
+                sent to Google Gemini to generate a reply. Individual transaction descriptions and
+                notes are not included in that summary.
+              </li>
+              <li>
+                WhatsApp messages are transmitted through Meta’s WhatsApp Business Platform. Meta,
+                Google, and the hosting/database providers configured by the operator process data
+                according to their own terms and privacy practices.
+              </li>
+              <li>
+                The app is not a bank and does not connect to bank accounts. Do not enter bank
+                credentials, full card numbers, or other authentication secrets.
+              </li>
+            </ul>
+          </section>
+
+          <section className="privacy-policy-section">
+            <h2>Storage, security, and retention</h2>
+            <p>
+              Account and finance data are stored by the database provider configured for the
+              service. The browser stores the sign-in token in local storage until you log out or
+              clear site data; the token may expire and require you to sign in again. Use log out on
+              shared devices. The service uses password hashing and authenticated API requests, but
+              no online service can promise absolute security.
+            </p>
+            <p>
+              The app currently has no account deletion control. Until an operator contact and
+              deletion process are published, it cannot offer a reliable self-service deletion
+              request. The operator must establish how account records and backups are deleted and
+              update this notice with the applicable retention period before inviting users.
+            </p>
+          </section>
+
+          <section className="privacy-policy-section">
+            <h2>Your choices and contact</h2>
+            <p>
+              You can edit or remove transactions, budgets, and goals in the app. To unlink WhatsApp,
+              send <code>unlink</code> to Ruvi. For privacy questions or account-deletion requests,
+              email <a href="mailto:ruveonai@gmail.com">ruveonai@gmail.com</a>.
+            </p>
+          </section>
+
+          <p className="privacy-disclaimer">
+            Ruvi provides general informational responses, not professional financial, tax, or
+            investment advice. This notice describes the current app behavior and must be reviewed
+            by the operator for the laws and services applicable to the deployed product.
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }
 
@@ -1169,6 +1278,9 @@ function LandingPage() {
               <Sparkles size={18} />
               <span>When you message Ruvi, a limited monthly account summary and your savings goals are sent to Google Gemini to answer.</span>
             </div>
+            <Link to="/privacy" className="text-link">
+              Read the full privacy notice <ArrowRight size={16} />
+            </Link>
           </div>
         </div>
       </section>
@@ -1207,6 +1319,7 @@ function LandingPage() {
             <button onClick={() => scrollToSection('features')}>Features</button>
             <button onClick={() => navigate('/login')}>Login</button>
             <button onClick={() => scrollToSection('faq')}>FAQ</button>
+            <Link to="/privacy">Privacy notice</Link>
           </div>
         </div>
       </footer>
@@ -1283,6 +1396,9 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, handleAuthInput
             <button type="submit" className="btn btn-primary full-btn">
               {authMode === 'login' ? 'Log in' : 'Create account'}
             </button>
+            <p className="auth-privacy-note">
+              Please read the <Link to="/privacy">Privacy Notice</Link> before using Ruveon.
+            </p>
           </form>
         </div>
       </div>

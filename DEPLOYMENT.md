@@ -5,13 +5,15 @@ Ruveon is deployed as a static React website on Vercel and a Python FastAPI API 
 ## Before deploying
 
 1. Push this project to a GitHub repository. Do not commit `.env` files, API keys, WhatsApp tokens, or database files.
-2. Create a persistent PostgreSQL database with a provider such as Neon or Supabase. Copy its PostgreSQL connection URL. A local SQLite file or Render's temporary filesystem is not suitable for production data.
-3. Create a Render web service from this repository using the included `render.yaml` blueprint. Set `DATABASE_URL` to the PostgreSQL connection URL in the Render service environment.
-4. In Render, set `CORS_ORIGINS` to the exact website origin, for example `https://ruveon.vercel.app` (no trailing slash). The API refuses to start in production with a wildcard CORS origin, SQLite, or an `AUTH_SECRET` shorter than 32 characters.
-5. Wait for the Render service to deploy. Check `https://<your-render-service>.onrender.com/health`.
-6. Import the same repository into Vercel. Set the build command to `npm run build`, the output directory to `dist`, and add:
+2. Review the in-app `/privacy` notice. Confirm its listed privacy email is monitored, establish a working account/data deletion process and retention period, and update the notice with those details before inviting users.
+3. Create a persistent PostgreSQL database with a provider such as Neon or Supabase. Copy its PostgreSQL connection URL. A local SQLite file or Render's temporary filesystem is not suitable for production data.
+4. Create a Render web service from this repository using the included `render.yaml` blueprint. Set `DATABASE_URL` to the PostgreSQL connection URL in the Render service environment.
+5. In Render, set `CORS_ORIGINS` to the exact website origin, for example `https://ruveon.vercel.app` (no trailing slash). The API refuses to start in production with a wildcard CORS origin, SQLite, or an `AUTH_SECRET` shorter than 32 characters.
+6. Wait for the Render service to deploy. Check `https://<your-render-service>.onrender.com/health`.
+7. Import the same repository into Vercel. Set the build command to `npm run build`, the output directory to `dist`, and add:
    - `VITE_API_BASE_URL=https://<your-render-service>.onrender.com/api/v1`
-7. Deploy the Vercel website. Copy its exact origin into Render's `CORS_ORIGINS` and redeploy the API.
+8. Deploy the Vercel website. Copy its exact origin into Render's `CORS_ORIGINS` and redeploy the API.
+9. Verify the live website can register and log in, then create, read, update, and delete test transactions, budgets, and savings goals. Confirm one user's data cannot be accessed from another account. Remove test data after the checks.
 
 Render runs the Alembic migrations before starting FastAPI. The service command runs from `backend`, so the deployed API uses `backend/app` and `backend/alembic`; the separate root-level `app` directory is not the deployment entry point.
 
@@ -71,7 +73,8 @@ The root `.env.example` lists the variables for reference. In production, enter 
 ## What is working versus what still needs outside setup
 
 - The repository contains the frontend/API wiring, token-protected API routes, database migrations, Gemini request handler, WhatsApp webhook, WhatsApp account linking, Vercel SPA routing, and Render service configuration.
-- Live deployment still requires a GitHub remote, Vercel/Render accounts, a persistent PostgreSQL database, and the environment variables above.
+- The public repository is prepared, but live deployment still requires importing it into Vercel and Render, a persistent PostgreSQL database, production environment variables, and verification against those live services.
 - Automated WhatsApp requires Meta's business onboarding, a sender number, approved/valid credentials, and webhook subscription. Until configured, website login should continue to the dashboard rather than opening WhatsApp.
 - The WhatsApp bot currently answers finance questions from a summary; it does not create or edit transactions by interpreting chat messages.
+- The in-app privacy notice is available at `/privacy`. Confirm its privacy contact remains monitored and establish a reliable account/data deletion process and retention policy before public launch.
 - Provider plans, free quotas, and WhatsApp charges depend on the current provider rules and usage. Check the linked official pricing pages before launch.
