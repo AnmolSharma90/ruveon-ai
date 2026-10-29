@@ -11,7 +11,7 @@ Ruveon is deployed as a static React website on Vercel and a Python FastAPI API 
 5. In Render, set `CORS_ORIGINS` to the exact website origin, for example `https://ruveon.vercel.app` (no trailing slash). The API refuses to start in production with a wildcard CORS origin, SQLite, or an `AUTH_SECRET` shorter than 32 characters.
 6. Wait for the Render service to deploy. Check `https://<your-render-service>.onrender.com/health`.
 7. Import the same repository into Vercel. Set the build command to `npm run build`, the output directory to `dist`, and add:
-   - `VITE_API_BASE_URL=https://<your-render-service>.onrender.com/api/v1`
+   - `VITE_API_BASE_URL=https://ruveon-api.onrender.com/api/v1` for the current Render service.
 8. Deploy the Vercel website. Copy its exact origin into Render's `CORS_ORIGINS` and redeploy the API.
 9. Verify the live website can register and log in, then create, read, update, and delete test transactions, budgets, and savings goals. Confirm one user's data cannot be accessed from another account. Remove test data after the checks.
 
