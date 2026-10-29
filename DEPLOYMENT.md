@@ -44,7 +44,7 @@ An ordinary WhatsApp or WhatsApp Business mobile app number is not enough to run
    - `WHATSAPP_VERIFY_TOKEN` to a long, random value you create. Use the same value when verifying the webhook in Meta.
    - `WHATSAPP_APP_SECRET` to the Meta app secret from **App settings > Basic** in the Meta App Dashboard (use **Show** if needed).
 4. Configure the Meta WhatsApp webhook callback URL as `https://<your-render-service>.onrender.com/api/v1/webhooks/whatsapp`, use the same verify token, and subscribe the webhook to the `messages` field.
-5. After Render redeploys, sign in to Ruveon. Once WhatsApp is configured, the login flow opens a chat with Ruvi and a pre-filled account-link code. Press **Send** in WhatsApp to finish linking. Codes expire after 10 minutes.
+5. After Render redeploys, sign in to Ruveon and choose **Connect WhatsApp** in the dashboard header. This opens a chat with Ruvi and a pre-filled account-link code. Press **Send** in WhatsApp to finish linking. Codes expire after 10 minutes. WhatsApp is optional; users can continue in the dashboard without connecting it.
 6. Send Ruvi a text question. Send `unlink` to disconnect the WhatsApp number from that Ruveon account.
 
 `WHATSAPP_VERIFY_TOKEN` is not issued by Meta: create a private random value yourself, put it in Render, and enter the exact same value into Meta's webhook setup. It is separate from `WHATSAPP_APP_SECRET`.

@@ -20,6 +20,7 @@ import {
   Goal,
   IndianRupee,
   LayoutDashboard,
+  Menu,
   MessageSquareText,
   PiggyBank,
   Plus,
@@ -537,17 +538,7 @@ function App() {
       });
 
       persistSession(response.user, response.access_token);
-      try {
-        const link = await requestJson(`${API_BASE}/whatsapp/link-code`, { method: 'POST' });
-        window.location.assign(link.whatsapp_url);
-      } catch (error) {
-        setApiError(
-          error.message === 'WhatsApp is not configured yet'
-            ? 'You are signed in. WhatsApp is not configured yet, so continue in the dashboard.'
-            : `You are signed in, but Ruvi could not open WhatsApp: ${error.message}`,
-        );
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     } catch (error) {
       const message = error.message || 'Authentication failed';
       if (message.toLowerCase().includes('already exists')) {
@@ -558,6 +549,28 @@ function App() {
         setAuthErrors((prev) => ({ ...prev, password: message }));
       }
     }
+  };
+
+  const handleConnectWhatsApp = async () => {
+    setApiError('');
+    try {
+      const link = await requestJson(`${API_BASE}/whatsapp/link-code`, { method: 'POST' });
+      window.location.assign(link.whatsapp_url);
+    } catch (error) {
+      setApiError(`Unable to connect WhatsApp: ${error.message}`);
+    }
+  };
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(SESSION_KEY);
+    }
+    setAuthenticated(false);
+    setActiveUserId(1);
+    setTransactions([]);
+    setBudgets([]);
+    setSavingsGoals([]);
+    navigate('/');
   };
 
   const handleTransactionFormSubmit = async (event) => {
@@ -776,7 +789,11 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Header authenticated={authenticated} setAuthenticated={setAuthenticated} />
+      <Header
+        authenticated={authenticated}
+        onLogout={handleLogout}
+        onConnectWhatsApp={handleConnectWhatsApp}
+      />
       {apiError && (
         <div className="container" role="alert">
           <p className="form-error">{apiError}</p>
@@ -1012,17 +1029,22 @@ function PrivacyPage() {
   );
 }
 
-function Header({ authenticated, setAuthenticated }) {
-  const navigate = useNavigate();
+function Header({ authenticated, onLogout, onConnectWhatsApp }) {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navItems = [
     { to: '/', label: 'Home' },
+    { to: '/#features', label: 'Features' },
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/transactions', label: 'Transactions' },
     { to: '/budgets', label: 'Budgets' },
     { to: '/reports', label: 'Reports' },
     { to: '/savings', label: 'Savings' },
   ];
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.hash]);
 
   return (
     <header className="topbar">
@@ -1032,51 +1054,76 @@ function Header({ authenticated, setAuthenticated }) {
           <span>Ruveon AI</span>
         </Link>
 
-        <nav className="main-nav" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={location.pathname === item.to ? 'nav-link active' : 'nav-link'}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <button
+          type="button"
+          className="mobile-menu-toggle"
+          aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="site-navigation"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
 
-        <div className="topbar-actions">
-          {!authenticated ? (
-            <>
-              <Link to="/login" className="btn btn-ghost">
-                Login
-              </Link>
-              <Link to="/register" className="btn btn-primary">
-                Start free
-              </Link>
-            </>
-          ) : (
-            <>
-              <button className="icon-button" aria-label="Notifications">
-                <Bell size={18} />
-              </button>
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  setAuthenticated(false);
-                  setActiveUserId(1);
-                  setTransactions([]);
-                  setBudgets([]);
-                  setSavingsGoals([]);
-                  if (typeof window !== 'undefined') {
-                    window.localStorage.removeItem(SESSION_KEY);
-                  }
-                  navigate('/');
-                }}
-              >
-                Log out
-              </button>
-            </>
-          )}
+        <div id="site-navigation" className={`topbar-menu${mobileMenuOpen ? ' is-open' : ''}`}>
+          <nav className="main-nav" aria-label="Main navigation">
+            {navItems.map((item) => {
+              const isActive = item.label === 'Features'
+                ? location.pathname === '/' && location.hash === '#features'
+                : location.pathname === item.to;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={isActive ? 'nav-link active' : 'nav-link'}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="topbar-actions">
+            {!authenticated ? (
+              <>
+                <Link to="/login" className="btn btn-ghost" onClick={() => setMobileMenuOpen(false)}>
+                  Login
+                </Link>
+                <Link to="/register" className="btn btn-primary" onClick={() => setMobileMenuOpen(false)}>
+                  Sign Up
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onConnectWhatsApp();
+                  }}
+                >
+                  <MessageSquareText size={16} />
+                  Connect WhatsApp
+                </button>
+                <button type="button" className="icon-button" aria-label="Notifications">
+                  <Bell size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onLogout();
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>
@@ -1298,7 +1345,7 @@ function LandingPage() {
             </div>
             <div className="faq-item card-surface">
               <h3>What happens after sign-in?</h3>
-              <p>When Ruvi's WhatsApp service is configured, sign-in opens WhatsApp with a secure account-link message. Otherwise, continue to the finance dashboard.</p>
+              <p>After signing in, choose Connect WhatsApp to open a secure account-link message when Ruvi's WhatsApp service is configured. You can also continue using the finance dashboard without linking WhatsApp.</p>
             </div>
             <div className="faq-item card-surface">
               <h3>Can Ruvi automatically reply on WhatsApp?</h3>
