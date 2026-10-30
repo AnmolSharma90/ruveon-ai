@@ -692,7 +692,17 @@ def _handle_whatsapp_message(db: Session, whatsapp_id: str, message_id: str, tex
 
     if action.intent == "query_budget":
         if not action.category:
-            return "Which category budget would you like to check?"
+            summary = build_dashboard_summary(db, user_id=account.user_id)
+            if summary["monthly_budget"] <= 0:
+                return (
+                    "You have not set an overall budget for this month. "
+                    f"You have spent {_format_money(summary['total_expenses'])} so far."
+                )
+            return (
+                f"Your overall budget is {_format_money(summary['monthly_budget'])}. "
+                f"You have spent {_format_money(summary['total_expenses'])}; "
+                f"{_format_money(summary['remaining_budget'])} remains."
+            )
         month = date.today().strftime("%Y-%m")
         budget = db.execute(
             select(Budget).where(
@@ -717,6 +727,29 @@ def _handle_whatsapp_message(db: Session, whatsapp_id: str, message_id: str, tex
             f"{budget.category} budget: {_format_money(budget.limit_amount)}. "
             f"Spent {_format_money(spent)}; {_format_money(budget.limit_amount - spent)} remaining."
         )
+
+    if action.intent == "query_transactions":
+        conditions = [Transaction.user_id == account.user_id]
+        if action.category:
+            conditions.append(func.lower(Transaction.category) == action.category.strip().lower())
+        if action.transaction_type:
+            conditions.append(Transaction.type == action.transaction_type)
+        if action.date:
+            conditions.append(Transaction.date == action.date)
+        records = db.execute(
+            select(Transaction)
+            .where(*conditions)
+            .order_by(Transaction.date.desc(), Transaction.id.desc())
+            .limit(5)
+        ).scalars().all()
+        if not records:
+            return "I couldn't find any matching transactions."
+        lines = [
+            f"{record.date.isoformat()} — {record.type.title()} {_format_money(record.amount)} "
+            f"({record.category}): {record.description}"
+            for record in records
+        ]
+        return "Here are your latest matching transactions:\n" + "\n".join(lines)
 
     if action.intent == "record_transaction":
         if not action.amount or not action.transaction_type or not action.category:

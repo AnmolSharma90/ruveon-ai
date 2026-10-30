@@ -20,6 +20,7 @@ class FinanceAction(BaseModel):
         "record_transaction",
         "query_spending",
         "query_budget",
+        "query_transactions",
         "lend_money",
         "record_repayment",
         "edit_transaction",
@@ -55,7 +56,9 @@ def generate_finance_action(message: str, financial_context: str) -> FinanceActi
                     "capture explicit amount, income/expense type, a concise custom category, description, merchant when stated, "
                     "and date when clear. Dates must use ISO YYYY-MM-DD or null. For lending, capture borrower, principal, date lent, and any explicitly stated due date. "
                     "For repayment, include person and amount. For transaction editing, include the old amount, replacement amount, "
-                    "category, and date when available. Put a short user-facing clarification in reply when necessary. "
+                    "category, and date when available. Use query_transactions when the user asks to see or review transaction history. "
+                    "For overall budget or remaining budget questions, use query_budget with category null; only set category for a specific category budget. "
+                    "For spending totals, use query_spending. Put a short user-facing clarification in reply when necessary. "
                     "Use the supplied account summary only for account questions; server code will calculate balances. "
                     f"Current date: {Date.today().isoformat()}. Account summary: {financial_context}"
                 )
