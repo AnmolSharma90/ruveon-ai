@@ -1,4 +1,5 @@
-﻿from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -7,6 +8,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./ruveon.db"
     api_v1_prefix: str = "/api/v1"
     auth_secret: str = "ruveon-development-secret-do-not-use-in-production"
+    session_idle_timeout_minutes: int = Field(default=30, gt=0)
     cors_origins: str = "*"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"

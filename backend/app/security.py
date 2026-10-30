@@ -6,6 +6,7 @@ import hmac
 import json
 import secrets
 import time
+import uuid
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import User
+from app.models import AuthSession, User
 
 bearer_scheme = HTTPBearer(auto_error=False)
 TOKEN_LIFETIME_SECONDS = 60 * 60 * 24 * 7
@@ -41,10 +42,18 @@ def verify_password(password: str, stored_hash: str) -> tuple[bool, str | None]:
     return False, None
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(db: Session, user_id: int) -> str:
     if not settings.auth_secret:
         raise RuntimeError("AUTH_SECRET must be configured before creating sessions")
-    payload = json.dumps({"sub": user_id, "exp": int(time.time()) + TOKEN_LIFETIME_SECONDS}, separators=(",", ":")).encode()
+    now = int(time.time())
+    session_id = uuid.uuid4().hex
+    expires_at = now + TOKEN_LIFETIME_SECONDS
+    db.add(AuthSession(id=session_id, user_id=user_id, expires_at=expires_at, last_activity_at=now))
+    db.commit()
+    payload = json.dumps(
+        {"sub": user_id, "exp": expires_at, "jti": session_id},
+        separators=(",", ":"),
+    ).encode()
     encoded_payload = base64.urlsafe_b64encode(payload).rstrip(b"=").decode()
     signature = hmac.new(settings.auth_secret.encode(), encoded_payload.encode(), hashlib.sha256).digest()
     encoded_signature = base64.urlsafe_b64encode(signature).rstrip(b"=").decode()
@@ -74,11 +83,33 @@ def get_current_user(
         payload_bytes = base64.urlsafe_b64decode(encoded_payload + "=" * (-len(encoded_payload) % 4))
         payload = json.loads(payload_bytes)
         user_id = int(payload["sub"])
+        session_id = str(payload["jti"])
         if int(payload["exp"]) < int(time.time()):
             raise unauthorized
     except (ValueError, KeyError, TypeError, json.JSONDecodeError):
         raise unauthorized from None
 
+    session = db.get(AuthSession, session_id)
+    now = int(time.time())
+    if (
+        session is None
+        or session.user_id != user_id
+        or session.revoked_at is not None
+        or session.expires_at <= now
+    ):
+        raise unauthorized
+    idle_timeout = settings.session_idle_timeout_minutes * 60
+    if now - session.last_activity_at >= idle_timeout:
+        session.revoked_at = now
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session has expired. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if now - session.last_activity_at >= 60:
+        session.last_activity_at = now
+        db.commit()
     user = db.get(User, user_id)
     if user is None:
         raise unauthorized

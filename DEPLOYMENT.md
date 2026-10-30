@@ -15,7 +15,7 @@ Ruveon is deployed as a static React website on Vercel and a Python FastAPI API 
 8. Deploy the Vercel website. Copy its exact origin into Render's `CORS_ORIGINS` and redeploy the API.
 9. Verify the live website can register and log in, then create, read, update, and delete test transactions, budgets, and savings goals. Confirm one user's data cannot be accessed from another account. Remove test data after the checks.
 
-Render runs the Alembic migrations before starting FastAPI. The service command runs from `backend`, so the deployed API uses `backend/app` and `backend/alembic`; the separate root-level `app` directory is not the deployment entry point.
+Render runs the Alembic migrations before starting FastAPI. For a local existing database, run `alembic upgrade head` from `backend/` with `PYTHONPATH` set to `backend` and `DATABASE_URL` pointing at that database. The service command runs from `backend`, so the deployed API uses `backend/app` and `backend/alembic`; the separate root-level `app` directory is not the deployment entry point.
 
 ## Gemini setup for Ruvi
 
@@ -24,7 +24,7 @@ Render runs the Alembic migrations before starting FastAPI. The service command 
 3. The default model is `gemini-2.5-flash`; change `GEMINI_MODEL` in Render only if your Google project supports the replacement.
 4. Verify the free-tier quota and current pricing for your account, region, and model in the [Gemini API pricing documentation](https://ai.google.dev/gemini-api/docs/pricing). Free availability and limits can change; usage beyond a free quota may require billing.
 
-Ruvi uses Gemini to answer WhatsApp questions using a compact current-month account summary and savings goals. The website discloses this to users. Do not send bank credentials, card numbers, passwords, or other secrets to the chatbot. Before a public launch, publish a privacy notice that covers account data, WhatsApp/Meta, Google Gemini, retention, and user deletion requests.
+Ruvi uses Gemini to interpret English and Hinglish WhatsApp messages, answer account questions using a compact account summary, and classify requested transactions, loans, repayments, and transaction corrections. The website discloses that the message text and limited account context are sent to Google. Validated actions are saved to the same database as website records. Do not send bank credentials, card numbers, passwords, or other secrets to the chatbot. Before a public launch, review the in-app privacy notice and publish retention and account-deletion procedures.
 
 ## Official WhatsApp Cloud API setup
 
@@ -60,6 +60,7 @@ The root `.env.example` lists the variables for reference. In production, enter 
 | `APP_ENV` | Render | Set to `production`; enables production configuration checks. |
 | `DATABASE_URL` | Render | Persistent PostgreSQL connection URL. |
 | `AUTH_SECRET` | Render | Render-generated signing secret; do not share it. |
+| `SESSION_IDLE_TIMEOUT_MINUTES` | Render | Optional inactivity timeout in minutes; defaults to 30. |
 | `CORS_ORIGINS` | Render | Exact Vercel website origin(s), comma-separated. |
 | `GEMINI_API_KEY` | Render | Private Gemini credential. |
 | `GEMINI_MODEL` | Render | Gemini model name; defaults to `gemini-2.5-flash`. |

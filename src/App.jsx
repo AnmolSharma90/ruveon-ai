@@ -40,6 +40,10 @@ const CategorySpendingChart = lazy(() => import('./Charts').then((module) => ({ 
 const MonthlyExpenseChart = lazy(() => import('./Charts').then((module) => ({ default: module.MonthlyExpenseChart })));
 
 const currentDate = new Date();
+function getLocalDateString(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 const sections = [
   { id: 'features', label: 'Features' },
   { id: 'how-it-works', label: 'How it works' },
@@ -62,47 +66,18 @@ const categoryColors = {
   Other: '#94a3b8',
 };
 
-const demoTransactions = [
-  { id: 1, type: 'expense', category: 'Housing', description: 'Apartment rent', merchant: 'Nest Homes', amount: 24500, date: '2026-10-01', paymentMethod: 'Bank Transfer', notes: 'Monthly rent' },
-  { id: 2, type: 'expense', category: 'Food', description: 'Groceries', merchant: 'Fresh Basket', amount: 4200, date: '2026-10-02', paymentMethod: 'UPI', notes: 'Vegetables and staples' },
-  { id: 3, type: 'income', category: 'Salary', description: 'Salary deposit', merchant: 'Acme Corp', amount: 84500, date: '2026-10-03', paymentMethod: 'Bank Transfer', notes: 'Monthly salary' },
-  { id: 4, type: 'expense', category: 'Transport', description: 'Fuel refill', merchant: 'WheelWay', amount: 2200, date: '2026-10-04', paymentMethod: 'Debit Card', notes: 'Fuel for commute' },
-  { id: 5, type: 'expense', category: 'Bills', description: 'Internet bill', merchant: 'Broadlink', amount: 1300, date: '2026-10-06', paymentMethod: 'UPI', notes: 'Home internet plan' },
-  { id: 6, type: 'expense', category: 'Entertainment', description: 'Movie night', merchant: 'CineHub', amount: 1800, date: '2026-10-10', paymentMethod: 'Credit Card', notes: 'Weekend outing' },
-  { id: 7, type: 'expense', category: 'Shopping', description: 'Laptop accessories', merchant: 'TechSphere', amount: 6200, date: '2026-09-18', paymentMethod: 'Credit Card', notes: 'Power bank and stand' },
-  { id: 8, type: 'income', category: 'Freelance', description: 'Design work', merchant: 'NorthStar Labs', amount: 18000, date: '2026-09-21', paymentMethod: 'Bank Transfer', notes: 'Landing page redesign' },
-  { id: 9, type: 'expense', category: 'Health', description: 'Pharmacy', merchant: 'CarePlus', amount: 960, date: '2026-09-22', paymentMethod: 'UPI', notes: 'Medicines' },
-  { id: 10, type: 'expense', category: 'Travel', description: 'Train tickets', merchant: 'RailConnect', amount: 3100, date: '2026-08-15', paymentMethod: 'Debit Card', notes: 'Weekend trip' },
-  { id: 11, type: 'expense', category: 'Food', description: 'Restaurant', merchant: 'Saffron Bowl', amount: 2500, date: '2026-10-12', paymentMethod: 'UPI', notes: 'Client dinner' },
-  { id: 12, type: 'income', category: 'Salary', description: 'Bonus', merchant: 'Acme Corp', amount: 15000, date: '2026-09-27', paymentMethod: 'Bank Transfer', notes: 'Quarterly bonus' },
-  { id: 13, type: 'expense', category: 'Bills', description: 'Electricity bill', merchant: 'VoltGrid', amount: 2940, date: '2026-10-09', paymentMethod: 'Bank Transfer', notes: 'Power usage' },
-  { id: 14, type: 'expense', category: 'Shopping', description: 'Home essentials', merchant: 'Urban Cart', amount: 4700, date: '2026-08-29', paymentMethod: 'Credit Card', notes: 'Kitchen storage' },
-  { id: 15, type: 'expense', category: 'Food', description: 'Office snacks', merchant: 'Cafe 7', amount: 1200, date: '2026-10-13', paymentMethod: 'UPI', notes: 'Team meetup' },
-  { id: 16, type: 'income', category: 'Investment', description: 'Dividend payout', merchant: 'Growth Funds', amount: 9200, date: '2026-10-18', paymentMethod: 'Bank Transfer', notes: 'Quarterly dividends' },
-];
-
-const demoBudgets = [
-  { id: 1, category: 'Overall', limit: 55000, period: '2026-10', type: 'overall' },
-  { id: 2, category: 'Housing', limit: 25000, period: '2026-10', type: 'category' },
-  { id: 3, category: 'Food', limit: 7000, period: '2026-10', type: 'category' },
-  { id: 4, category: 'Transport', limit: 4000, period: '2026-10', type: 'category' },
-  { id: 5, category: 'Bills', limit: 6000, period: '2026-10', type: 'category' },
-  { id: 6, category: 'Shopping', limit: 5000, period: '2026-10', type: 'category' },
-  { id: 7, category: 'Entertainment', limit: 3500, period: '2026-10', type: 'category' },
-];
-
 const defaultForm = {
   type: 'expense',
   category: 'Food',
   description: '',
   merchant: '',
   amount: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: getLocalDateString(),
   paymentMethod: 'UPI',
   notes: '',
 };
 
-const budgetFormDefault = { category: 'Food', limit: '', period: new Date().toISOString().slice(0, 7) };
+const budgetFormDefault = { category: 'Food', limit: '', period: getLocalDateString().slice(0, 7), kind: 'category' };
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '') || '/api/v1';
 const SESSION_KEY = 'ruveon-user';
 
@@ -123,11 +98,19 @@ const mapBudgetFromApi = (item) => ({
   category: item.category,
   limit: Number(item.limit_amount),
   period: item.period,
-  type: 'category',
+  type: item.kind || 'category',
+  spent: Number(item.spent_amount || 0),
 });
 
 const requestJson = async (url, options = {}) => {
-  const session = typeof window !== 'undefined' ? JSON.parse(window.localStorage.getItem(SESSION_KEY) || 'null') : null;
+  let session = null;
+  if (typeof window !== 'undefined') {
+    try {
+      session = JSON.parse(window.localStorage.getItem(SESSION_KEY) || 'null');
+    } catch {
+      window.localStorage.removeItem(SESSION_KEY);
+    }
+  }
   const headers = {
     'Content-Type': 'application/json',
     ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
@@ -147,6 +130,14 @@ const requestJson = async (url, options = {}) => {
       message = parsed.detail || message;
     } catch {
       // Keep the response text when the server does not return JSON.
+    }
+    if (
+      response.status === 401 &&
+      !url.endsWith('/users/logout') &&
+      !url.endsWith('/users/login') &&
+      !url.endsWith('/users')
+    ) {
+      window.dispatchEvent(new CustomEvent('ruveon:session-expired', { detail: message }));
     }
     throw new Error(message);
   }
@@ -221,13 +212,15 @@ function createCsv(rows) {
 }
 
 function App() {
-  const [transactions, setTransactions] = useState(demoTransactions);
-  const [budgets, setBudgets] = useState(demoBudgets);
-  const [savingsGoals, setSavingsGoals] = useState([
-    { id: 1, title: 'Emergency fund', target: 150000, saved: 87000, color: '#10b981' },
-    { id: 2, title: 'Vacation fund', target: 60000, saved: 39000, color: '#38bdf8' },
-    { id: 3, title: 'Home setup', target: 100000, saved: 45000, color: '#f59e0b' },
-  ]);
+  const [transactions, setTransactions] = useState([]);
+  const [transactionOffset, setTransactionOffset] = useState(0);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
+  const [loadingMoreTransactions, setLoadingMoreTransactions] = useState(false);
+  const [budgets, setBudgets] = useState([]);
+  const [savingsGoals, setSavingsGoals] = useState([]);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [reportSummaryApi, setReportSummaryApi] = useState(null);
+  const [financialDataVersion, setFinancialDataVersion] = useState(0);
   const [goalForm, setGoalForm] = useState({ title: '', target: '', saved: '', color: '#14b8a6' });
   const [goalEditId, setGoalEditId] = useState(null);
   const [activeUserId, setActiveUserId] = useState(() => {
@@ -245,6 +238,11 @@ function App() {
     if (typeof window === 'undefined') return false;
     return Boolean(window.localStorage.getItem(SESSION_KEY));
   });
+  const [sessionValidated, setSessionValidated] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return !window.localStorage.getItem(SESSION_KEY);
+  });
+  const [whatsappStatus, setWhatsappStatus] = useState(null);
   const [reportPeriod, setReportPeriod] = useState('This month');
   const [transactionForm, setTransactionForm] = useState(defaultForm);
   const [transactionEditId, setTransactionEditId] = useState(null);
@@ -255,15 +253,137 @@ function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc');
   const [dateFilter, setDateFilter] = useState('');
-  const [reportStart, setReportStart] = useState('2026-09-01');
-  const [reportEnd, setReportEnd] = useState('2026-10-31');
+  const [reportStart, setReportStart] = useState(() => `${getMonthKey(new Date())}-01`);
+  const [reportEnd, setReportEnd] = useState(() => getLocalDateString());
   const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '' });
   const [authErrors, setAuthErrors] = useState({});
+  const [authSubmitting, setAuthSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleSessionExpired = (event) => {
+      window.localStorage.removeItem(SESSION_KEY);
+      setAuthenticated(false);
+      setSessionValidated(true);
+      setActiveUserId(0);
+      setTransactions([]);
+      setTransactionOffset(0);
+      setHasMoreTransactions(false);
+      setBudgets([]);
+      setSavingsGoals([]);
+      setDashboardSummary(null);
+      setReportSummaryApi(null);
+      setWhatsappStatus(null);
+      navigate('/login', {
+        replace: true,
+        state: { sessionExpired: true, reason: event.detail },
+      });
+    };
+    window.addEventListener('ruveon:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('ruveon:session-expired', handleSessionExpired);
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!authenticated) {
+      setSessionValidated(true);
+      return undefined;
+    }
+
+    let active = true;
+    const validateSession = async () => {
+      setSessionValidated(false);
+      try {
+        await requestJson(`${API_BASE}/users/me`);
+        if (active) setSessionValidated(true);
+      } catch (error) {
+        if (active && !window.localStorage.getItem(SESSION_KEY)) return;
+        if (active) {
+          setTransactions([]);
+          setTransactionOffset(0);
+          setHasMoreTransactions(false);
+          setBudgets([]);
+          setSavingsGoals([]);
+          setDashboardSummary(null);
+          setApiError(`Unable to verify your session: ${error.message}`);
+          setSessionValidated(true);
+        }
+      }
+    };
+    const onPageShow = () => {
+      setTransactions([]);
+      setTransactionOffset(0);
+      setHasMoreTransactions(false);
+      setBudgets([]);
+      setSavingsGoals([]);
+      setDashboardSummary(null);
+      setReportSummaryApi(null);
+      validateSession();
+    };
+    const onPageHide = () => {
+      setTransactions([]);
+      setTransactionOffset(0);
+      setHasMoreTransactions(false);
+      setBudgets([]);
+      setSavingsGoals([]);
+      setDashboardSummary(null);
+      setReportSummaryApi(null);
+      setSessionValidated(false);
+    };
+    validateSession();
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      active = false;
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [activeUserId, authenticated]);
+
+  useEffect(() => {
+    if (!authenticated) return undefined;
+    let session = null;
+    try {
+      session = JSON.parse(window.localStorage.getItem(SESSION_KEY) || 'null');
+    } catch {
+      window.localStorage.removeItem(SESSION_KEY);
+    }
+    const timeoutMs = Math.max(1000, Number(session?.idle_timeout_seconds || 1800) * 1000);
+    let lastActivity = Date.now();
+    let lastServerActivity = Date.now();
+    let timer;
+    const expireForInactivity = () => {
+      requestJson(`${API_BASE}/users/logout`, { method: 'POST' }).catch((error) => {
+        setApiError(`Your session expired, but the server could not revoke it: ${error.message}`);
+      });
+      window.localStorage.removeItem(SESSION_KEY);
+      window.dispatchEvent(new CustomEvent('ruveon:session-expired', { detail: 'inactivity timeout' }));
+    };
+    const resetTimer = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(expireForInactivity, timeoutMs);
+    };
+    const markActivity = () => {
+      lastActivity = Date.now();
+      if (lastActivity - lastServerActivity >= 60_000) {
+        lastServerActivity = lastActivity;
+        requestJson(`${API_BASE}/users/me`).catch((error) => {
+          setApiError(`Unable to refresh your session: ${error.message}`);
+        });
+      }
+      resetTimer();
+    };
+    const activityEvents = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, markActivity, { passive: true }));
+    resetTimer();
+    return () => {
+      window.clearTimeout(timer);
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, markActivity));
+    };
+  }, [authenticated]);
 
   useEffect(() => {
     if (authenticated && (location.pathname === '/login' || location.pathname === '/register')) {
@@ -272,29 +392,31 @@ function App() {
   }, [authenticated, location.pathname, navigate]);
 
   useEffect(() => {
-    if (!authenticated) return;
+    if (!authenticated || !sessionValidated) return;
 
     const loadData = async () => {
       setApiError('');
       setTransactions([]);
       setBudgets([]);
       setSavingsGoals([]);
+      setReportSummaryApi(null);
       try {
-        const [transactionResponse, budgetResponse, goalsResponse] = await Promise.all([
-          requestJson(`${API_BASE}/transactions?limit=100`),
+        const [transactionResponse, budgetResponse, goalsResponse, whatsappResponse, dashboardResponse] = await Promise.all([
+          requestJson(`${API_BASE}/transactions?limit=100&offset=0`),
           requestJson(`${API_BASE}/budgets`),
           requestJson(`${API_BASE}/goals`),
+          requestJson(`${API_BASE}/whatsapp/status`),
+          requestJson(`${API_BASE}/dashboard`),
         ]);
 
         if (Array.isArray(transactionResponse)) {
           setTransactions(transactionResponse.map(mapTransactionFromApi));
+          setTransactionOffset(transactionResponse.length);
+          setHasMoreTransactions(transactionResponse.length === 100);
         }
 
         if (Array.isArray(budgetResponse)) {
-          setBudgets([
-            { id: 'overall', category: 'Overall', limit: 55000, period: getMonthKey(new Date()), type: 'overall' },
-            ...budgetResponse.map(mapBudgetFromApi),
-          ]);
+          setBudgets(budgetResponse.map(mapBudgetFromApi));
         }
 
         if (Array.isArray(goalsResponse)) {
@@ -308,16 +430,44 @@ function App() {
             })),
           );
         }
+        setWhatsappStatus(whatsappResponse);
+        setDashboardSummary(dashboardResponse);
       } catch (error) {
         setTransactions([]);
+        setTransactionOffset(0);
+        setHasMoreTransactions(false);
         setBudgets([]);
         setSavingsGoals([]);
+        setWhatsappStatus(null);
+        setDashboardSummary(null);
         setApiError(`Unable to load your account data: ${error.message}`);
       }
     };
 
     loadData();
-  }, [activeUserId, authenticated]);
+  }, [activeUserId, authenticated, sessionValidated]);
+
+  useEffect(() => {
+    if (!authenticated || !sessionValidated || !reportStart || !reportEnd || reportStart > reportEnd) {
+      setReportSummaryApi(null);
+      return undefined;
+    }
+    let active = true;
+    setReportSummaryApi(null);
+    requestJson(`${API_BASE}/reports?start_date=${reportStart}&end_date=${reportEnd}`)
+      .then((response) => {
+        if (active) setReportSummaryApi(response);
+      })
+      .catch((error) => {
+        if (active) {
+          setReportSummaryApi(null);
+          setApiError(`Unable to load report totals: ${error.message}`);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeUserId, authenticated, financialDataVersion, reportEnd, reportStart, sessionValidated]);
 
   const totalIncome = useMemo(() => sumAmounts(transactions, 'income'), [transactions]);
   const totalExpenses = useMemo(() => sumAmounts(transactions, 'expense'), [transactions]);
@@ -327,17 +477,31 @@ function App() {
     () => transactions.filter((item) => item.date.startsWith(currentMonthKey)),
     [transactions, currentMonthKey],
   );
-  const monthlyExpenseTotal = useMemo(() => sumAmounts(monthlyTransactions, 'expense'), [monthlyTransactions]);
+  const expensesFromLoadedTransactions = useMemo(
+    () => sumAmounts(monthlyTransactions, 'expense'),
+    [monthlyTransactions],
+  );
+  const monthlyExpenseTotal = dashboardSummary
+    ? Number(dashboardSummary.total_expenses)
+    : expensesFromLoadedTransactions;
   const overallBudget = useMemo(
-    () => budgets.find((item) => item.type === 'overall' && item.period === currentMonthKey)?.limit || 55000,
-    [budgets, currentMonthKey],
+    () => dashboardSummary
+      ? Number(dashboardSummary.monthly_budget)
+      : budgets.find((item) => item.type === 'overall' && item.period === currentMonthKey)?.limit || 0,
+    [budgets, currentMonthKey, dashboardSummary],
   );
   const remainingBudget = overallBudget - monthlyExpenseTotal;
   const transactionCount = transactions.length;
-  const monthlyIncome = useMemo(() => sumAmounts(monthlyTransactions, 'income'), [monthlyTransactions]);
+  const incomeFromLoadedTransactions = useMemo(
+    () => sumAmounts(monthlyTransactions, 'income'),
+    [monthlyTransactions],
+  );
+  const monthlyIncome = dashboardSummary
+    ? Number(dashboardSummary.total_income)
+    : incomeFromLoadedTransactions;
   const savingsProgress = Math.max(0, Math.min(100, ((monthlyIncome - monthlyExpenseTotal) / Math.max(monthlyIncome, 1)) * 100));
 
-  const categorySpending = useMemo(() => {
+  const categorySpendingFromLoadedTransactions = useMemo(() => {
     const grouped = {};
     monthlyTransactions
       .filter((item) => item.type === 'expense')
@@ -350,8 +514,11 @@ function App() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
   }, [monthlyTransactions]);
+  const categorySpending = dashboardSummary?.category_spending?.length
+    ? dashboardSummary.category_spending
+    : categorySpendingFromLoadedTransactions;
 
-  const trendData = useMemo(() => {
+  const trendDataFromLoadedTransactions = useMemo(() => {
     const months = [];
     const current = new Date();
 
@@ -367,6 +534,9 @@ function App() {
 
     return months;
   }, [transactions]);
+  const trendData = dashboardSummary?.expense_trend?.length
+    ? dashboardSummary.expense_trend.map((entry) => ({ month: entry.name, value: entry.value }))
+    : trendDataFromLoadedTransactions;
 
   const recentTransactions = useMemo(
     () => [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6),
@@ -376,16 +546,16 @@ function App() {
   const budgetCards = useMemo(
     () =>
       budgets
-        .filter((budget) => budget.type === 'category')
         .map((budget) => {
-          const spent = transactions
+          const calculatedSpent = transactions
             .filter(
               (item) =>
                 item.type === 'expense' &&
-                item.category === budget.category &&
+                (budget.type === 'overall' || item.category.toLowerCase() === budget.category.toLowerCase()) &&
                 item.date.startsWith(budget.period),
             )
             .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+          const spent = budget.spent ?? calculatedSpent;
           const remaining = budget.limit - spent;
           const progress = Math.min((spent / Math.max(budget.limit, 1)) * 100, 100);
           return {
@@ -407,7 +577,7 @@ function App() {
     });
   }, [transactions, reportStart, reportEnd]);
 
-  const reportSummary = useMemo(() => {
+  const reportSummaryFromLoadedTransactions = useMemo(() => {
     const income = sumAmounts(reportTransactions, 'income');
     const expense = sumAmounts(reportTransactions, 'expense');
     return {
@@ -417,6 +587,20 @@ function App() {
       savingsRate: income > 0 ? (income - expense) / income : 0,
     };
   }, [reportTransactions]);
+  const reportSummary = reportSummaryApi
+    ? {
+      income: Number(reportSummaryApi.income),
+      expense: Number(reportSummaryApi.expense),
+      net: Number(reportSummaryApi.net),
+      savingsRate: Number(reportSummaryApi.savings_rate),
+      monthlyTrend: reportSummaryApi.monthly_trend,
+      categorySpending: reportSummaryApi.category_spending,
+    }
+    : {
+      ...reportSummaryFromLoadedTransactions,
+      monthlyTrend: [],
+      categorySpending: [],
+    };
 
   const filteredTransactions = useMemo(() => {
     let data = [...transactions];
@@ -425,7 +609,9 @@ function App() {
       const term = searchTerm.toLowerCase();
       data = data.filter(
         (item) =>
-          item.description.toLowerCase().includes(term) || item.merchant.toLowerCase().includes(term),
+          item.description.toLowerCase().includes(term) ||
+          item.merchant.toLowerCase().includes(term) ||
+          item.category.toLowerCase().includes(term),
       );
     }
 
@@ -502,11 +688,12 @@ function App() {
     return Object.keys(errors).length === 0;
   };
 
-  const persistSession = (user, accessToken = '') => {
+  const persistSession = (user, accessToken = '', idleTimeoutSeconds = 1800) => {
     const session = {
       id: user.id,
       email: user.email,
       full_name: user.full_name || user.name || 'User',
+      idle_timeout_seconds: idleTimeoutSeconds,
       ...(accessToken ? { access_token: accessToken } : {}),
     };
     if (typeof window !== 'undefined') {
@@ -514,13 +701,15 @@ function App() {
     }
     setActiveUserId(Number(user.id));
     setAuthenticated(true);
+    setSessionValidated(false);
   };
 
   const handleSubmitAuth = async (event) => {
     event.preventDefault();
     setApiError('');
-    if (!validateAuth()) return;
+    if (!validateAuth() || authSubmitting) return;
 
+    setAuthSubmitting(true);
     try {
       const payload = {
         email: authForm.email.trim().toLowerCase(),
@@ -537,7 +726,7 @@ function App() {
         body: JSON.stringify(requestBody),
       });
 
-      persistSession(response.user, response.access_token);
+      persistSession(response.user, response.access_token, response.session_idle_timeout_seconds);
       navigate('/dashboard');
     } catch (error) {
       const message = error.message || 'Authentication failed';
@@ -548,6 +737,8 @@ function App() {
       } else {
         setAuthErrors((prev) => ({ ...prev, password: message }));
       }
+    } finally {
+      setAuthSubmitting(false);
     }
   };
 
@@ -561,16 +752,57 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    let logoutError = '';
+    try {
+      await requestJson(`${API_BASE}/users/logout`, { method: 'POST' });
+    } catch (error) {
+      logoutError = error.message;
+    }
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(SESSION_KEY);
     }
     setAuthenticated(false);
-    setActiveUserId(1);
+    setSessionValidated(true);
+    setActiveUserId(0);
     setTransactions([]);
+    setTransactionOffset(0);
+    setHasMoreTransactions(false);
     setBudgets([]);
     setSavingsGoals([]);
-    navigate('/');
+    setDashboardSummary(null);
+    setReportSummaryApi(null);
+    setWhatsappStatus(null);
+    setApiError(logoutError ? `Your device signed out, but the server could not revoke the session: ${logoutError}` : '');
+    navigate('/', { replace: true });
+  };
+
+  const refreshDashboardSummary = async () => {
+    const updatedSummary = await requestJson(`${API_BASE}/dashboard`);
+    setDashboardSummary(updatedSummary);
+  };
+
+  const refreshBudgetData = async () => {
+    const updatedBudgets = await requestJson(`${API_BASE}/budgets`);
+    setBudgets(updatedBudgets.map(mapBudgetFromApi));
+  };
+
+  const handleLoadMoreTransactions = async () => {
+    if (loadingMoreTransactions || !hasMoreTransactions) return;
+    setLoadingMoreTransactions(true);
+    try {
+      const response = await requestJson(
+        `${API_BASE}/transactions?limit=100&offset=${transactionOffset}`,
+      );
+      const page = response.map(mapTransactionFromApi);
+      setTransactions((previous) => [...previous, ...page]);
+      setTransactionOffset((previous) => previous + page.length);
+      setHasMoreTransactions(page.length === 100);
+    } catch (error) {
+      setApiError(`Unable to load more transactions: ${error.message}`);
+    } finally {
+      setLoadingMoreTransactions(false);
+    }
   };
 
   const handleTransactionFormSubmit = async (event) => {
@@ -611,12 +843,17 @@ function App() {
           body: JSON.stringify(apiPayload),
         });
         setTransactions((prev) => [mapTransactionFromApi(created), ...prev]);
+        setTransactionOffset((previous) => previous + 1);
       }
     } catch (error) {
       window.alert(`Transaction was not saved: ${error.message}`);
       return;
     }
 
+    setFinancialDataVersion((version) => version + 1);
+    Promise.all([refreshDashboardSummary(), refreshBudgetData()]).catch((error) => {
+      setApiError(`Transaction saved, but financial summaries could not be refreshed: ${error.message}`);
+    });
     setTransactionForm(defaultForm);
     setTransactionEditId(null);
   };
@@ -642,6 +879,11 @@ function App() {
       try {
         await requestJson(`${API_BASE}/transactions/${id}`, { method: 'DELETE' });
         setTransactions((prev) => prev.filter((entry) => entry.id !== id));
+        setTransactionOffset((previous) => Math.max(0, previous - 1));
+        setFinancialDataVersion((version) => version + 1);
+        Promise.all([refreshDashboardSummary(), refreshBudgetData()]).catch((error) => {
+          setApiError(`Transaction deleted, but financial summaries could not be refreshed: ${error.message}`);
+        });
       } catch (error) {
         window.alert(`Transaction was not deleted: ${error.message}`);
       }
@@ -704,13 +946,13 @@ function App() {
 
   const handleBudgetSubmit = async (event) => {
     event.preventDefault();
-    if (!budgetForm.category || !budgetForm.limit || Number(budgetForm.limit) <= 0) return;
+    if (!budgetForm.limit || Number(budgetForm.limit) <= 0 || (budgetForm.kind === 'category' && !budgetForm.category.trim())) return;
 
     const payload = {
-      category: budgetForm.category,
+      category: budgetForm.kind === 'overall' ? 'Overall' : budgetForm.category.trim(),
       limit: Number(budgetForm.limit),
       period: budgetForm.period,
-      type: 'category',
+      type: budgetForm.kind,
     };
 
     try {
@@ -721,6 +963,7 @@ function App() {
             category: payload.category,
             limit_amount: payload.limit,
             period: payload.period,
+            kind: payload.type,
           }),
         });
         setBudgets((prev) => prev.map((item) => (item.id === budgetEditId ? mapBudgetFromApi(updated) : item)));
@@ -731,6 +974,7 @@ function App() {
             category: payload.category,
             limit_amount: payload.limit,
             period: payload.period,
+            kind: payload.type,
           }),
         });
         setBudgets((prev) => [...prev, mapBudgetFromApi(created)]);
@@ -742,14 +986,20 @@ function App() {
 
     setBudgetForm(budgetFormDefault);
     setBudgetEditId(null);
+    Promise.all([refreshDashboardSummary(), refreshBudgetData()]).catch((error) => {
+      setApiError(`Budget saved, but financial summaries could not be refreshed: ${error.message}`);
+    });
   };
 
   const handleDeleteBudget = async (id) => {
     const item = budgets.find((entry) => entry.id === id);
-    if (!item || item.type === 'overall') return;
+    if (!item || !window.confirm(`Delete the ${item.type === 'overall' ? 'monthly' : item.category} budget for ${item.period}?`)) return;
     try {
       await requestJson(`${API_BASE}/budgets/${id}`, { method: 'DELETE' });
       setBudgets((prev) => prev.filter((entry) => entry.id !== id && !(entry.type === 'overall' && entry.id === id)));
+      Promise.all([refreshDashboardSummary(), refreshBudgetData()]).catch((error) => {
+        setApiError(`Budget deleted, but financial summaries could not be refreshed: ${error.message}`);
+      });
     } catch (error) {
       window.alert(`Budget was not deleted: ${error.message}`);
     }
@@ -787,12 +1037,18 @@ function App() {
     transactionCount: monthlyTransactions.length,
   };
 
+  const protectedPage = (element) => {
+    if (!authenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return sessionValidated ? element : <SessionLoading />;
+  };
+
   return (
     <div className="app-shell">
       <Header
         authenticated={authenticated}
         onLogout={handleLogout}
         onConnectWhatsApp={handleConnectWhatsApp}
+        whatsappStatus={whatsappStatus}
       />
       {apiError && (
         <div className="container" role="alert">
@@ -800,14 +1056,33 @@ function App() {
         </div>
       )}
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            <LandingPage
+              authenticated={authenticated && sessionValidated}
+              user={(() => {
+                try {
+                  return JSON.parse(window.localStorage.getItem(SESSION_KEY) || 'null');
+                } catch {
+                  return null;
+                }
+              })()}
+              whatsappStatus={whatsappStatus}
+              onConnectWhatsApp={handleConnectWhatsApp}
+            />
+          }
+        />
+        <Route path="/features/expense-tracking" element={<FeaturePage feature="expense-tracking" />} />
+        <Route path="/features/smart-budgeting" element={<FeaturePage feature="smart-budgeting" />} />
+        <Route path="/features/savings-insights" element={<FeaturePage feature="savings-insights" />} />
+        <Route path="/features/reports" element={<FeaturePage feature="reports" />} />
         <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/login" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
-        <Route path="/register" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
+        <Route path="/login" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} authSubmitting={authSubmitting} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
+        <Route path="/register" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} authSubmitting={authSubmitting} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
         <Route
           path="/dashboard"
-          element={
-            authenticated ? (
+          element={protectedPage(
               <DashboardPage
                 transactions={transactions}
                 reportPeriod={reportPeriod}
@@ -819,15 +1094,11 @@ function App() {
                 budgetCards={budgetCards}
                 savingsGoals={savingsGoals}
               />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          )}
         />
         <Route
           path="/transactions"
-          element={
-            authenticated ? (
+          element={protectedPage(
               <TransactionsPage
                 transactions={filteredTransactions}
                 searchTerm={searchTerm}
@@ -848,16 +1119,15 @@ function App() {
                 onEdit={handleEditTransaction}
                 onDelete={handleDeleteTransaction}
                 allCategories={[...new Set(transactions.map((item) => item.category))]}
+                hasMoreTransactions={hasMoreTransactions}
+                loadingMoreTransactions={loadingMoreTransactions}
+                onLoadMore={handleLoadMoreTransactions}
               />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          )}
         />
         <Route
           path="/budgets"
-          element={
-            authenticated ? (
+          element={protectedPage(
               <BudgetsPage
                 budgets={budgetCards}
                 budgetForm={budgetForm}
@@ -866,17 +1136,12 @@ function App() {
                 setBudgetEditId={setBudgetEditId}
                 onSubmit={handleBudgetSubmit}
                 onDelete={handleDeleteBudget}
-                transactions={transactions}
               />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          )}
         />
         <Route
           path="/reports"
-          element={
-            authenticated ? (
+          element={protectedPage(
               <ReportsPage
                 reportTransactions={reportTransactions}
                 reportSummary={reportSummary}
@@ -889,15 +1154,11 @@ function App() {
                 exportCsv={exportCsv}
                 setReportPeriod={setReportPeriod}
               />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          )}
         />
         <Route
           path="/savings"
-          element={
-            authenticated ? (
+          element={protectedPage(
               <SavingsPage
                 insights={insights}
                 savingsGoals={savingsGoals}
@@ -911,13 +1172,297 @@ function App() {
                 onGoalDelete={handleGoalDelete}
                 onGoalEdit={handleEditGoal}
               />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          )}
         />
+        <Route path="/lending" element={protectedPage(<LendingPage />)} />
       </Routes>
     </div>
+  );
+}
+
+function FeaturePage({ feature }) {
+  const content = {
+    'expense-tracking': {
+      title: 'Expense Tracking',
+      icon: Wallet,
+      eyebrow: 'Know where your money goes',
+      intro: 'Expense tracking gives you a clear, organized view of the money you spend each day.',
+      paragraphs: [
+        'Record a purchase when it happens or add it later with its amount, date, and a category that makes sense to you. Groceries, college fees, petrol, subscriptions, and other personal categories can all be tracked in one place.',
+        'When spending is grouped by category, patterns become easier to spot. Review past transactions to remember what you paid, compare everyday costs, and notice expenses that are quietly growing. A consistent record helps you make decisions with real information instead of guesswork.',
+        'For example, a month of small café purchases may add up to more than expected. Seeing that total can help you choose a realistic change without losing sight of the things you enjoy.',
+      ],
+      points: ['Record income and everyday purchases', 'Use your own categories and descriptions', 'Search and review transaction history'],
+    },
+    'smart-budgeting': {
+      title: 'Smart Budgeting',
+      icon: Calculator,
+      eyebrow: 'Make a plan that fits your month',
+      intro: 'A budget is a spending plan that helps you decide how to use your money before the month gets busy.',
+      paragraphs: [
+        'Set a monthly limit for your overall spending, then add category limits for areas such as food, travel, bills, or any category you create. As transactions are recorded, Ruveon shows how much of each limit has been used and what remains.',
+        'Progress indicators make it easier to notice when a category is getting close to its limit. That early signal gives you time to pause, adjust another part of your plan, or update a limit when your circumstances change.',
+        'Budgets are saved by month, so a new month starts with a fresh plan while your earlier limits and transaction history remain available for review. You stay in control of the amounts and can edit or remove a plan whenever needed.',
+      ],
+      points: ['Create monthly and category-wise limits', 'See spending progress and remaining amounts', 'Adjust budgets as your priorities change'],
+    },
+    'savings-insights': {
+      title: 'Savings Insights',
+      icon: PiggyBank,
+      eyebrow: 'Turn small habits into progress',
+      intro: 'Savings insights help you understand the choices behind your monthly surplus and build a plan for what comes next.',
+      paragraphs: [
+        'Review income and expenses together to see how much is left after spending. Category totals can reveal subscriptions, frequent small purchases, or other costs that may be worth reconsidering. The goal is not to judge spending, but to help you decide what matters most.',
+        'Create a savings goal for something important, choose a target amount, and update your progress over time. A clear goal can make saving feel more manageable by turning a large target into steady steps.',
+        'For instance, setting aside a chosen amount each month for an emergency fund makes progress visible and helps you balance today’s needs with future plans. Your transaction history and goal progress give you practical context for each adjustment.',
+      ],
+      points: ['Review the relationship between income and spending', 'Find categories to reconsider', 'Set goals and keep track of progress'],
+    },
+    reports: {
+      title: 'Reports',
+      icon: BarChart3,
+      eyebrow: 'See the bigger financial picture',
+      intro: 'Reports turn your saved transactions into a straightforward view of how money moves over time.',
+      paragraphs: [
+        'Choose a date range to review income, expenses, net cash flow, and savings rate. Category totals help explain where spending went, while monthly summaries show how your finances changed from one period to another.',
+        'Compare historical months to spot patterns such as seasonal bills, changing travel costs, or a steady increase in a particular category. Looking at income alongside expenses helps you understand whether your current habits are supporting the plans you have.',
+        'You can also review the largest transactions in a selected period and export records for your own reference. Reports are based on the transactions saved to your account, giving you a useful starting point for informed everyday decisions.',
+      ],
+      points: ['Review monthly and yearly summaries', 'Compare income, expenses, and cash flow', 'Explore category totals and transaction history'],
+    },
+  }[feature];
+
+  if (!content) return <Navigate to="/" replace />;
+  const Icon = content.icon;
+
+  return (
+    <main className="page-shell feature-page">
+      <section className="section">
+        <div className="container">
+          <Link to="/#features" className="text-link feature-back-link">
+            <ChevronRight size={16} className="back-chevron" /> Back to Features
+          </Link>
+          <div className="feature-detail card-surface">
+            <div className="feature-detail-icon"><Icon size={28} /></div>
+            <span className="eyebrow dark">{content.eyebrow}</span>
+            <h1>{content.title}</h1>
+            <p className="feature-detail-intro">{content.intro}</p>
+            <div className="feature-detail-content">
+              <div>
+                {content.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              </div>
+              <aside className="feature-takeaways card-surface">
+                <h2>What you can do</h2>
+                {content.points.map((point) => (
+                  <div key={point} className="feature-takeaway">
+                    <CheckCircle2 size={17} />
+                    <span>{point}</span>
+                  </div>
+                ))}
+                <Link to="/#features" className="btn btn-primary">
+                  Explore other features <ArrowRight size={17} />
+                </Link>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function SessionLoading() {
+  return (
+    <main className="page-shell">
+      <div className="container session-loading" role="status">
+        <ShieldCheck size={24} />
+        <p>Verifying your session before loading account information…</p>
+      </div>
+    </main>
+  );
+}
+
+function LendingPage() {
+  const [loans, setLoans] = useState([]);
+  const [summary, setSummary] = useState({ total_lent: 0, total_recovered: 0, outstanding: 0, pending_count: 0, overdue_count: 0 });
+  const [loanForm, setLoanForm] = useState({
+    borrower_name: '',
+    principal: '',
+    date_lent: getLocalDateString(),
+    expected_repayment_date: '',
+    notes: '',
+  });
+  const [repaymentAmounts, setRepaymentAmounts] = useState({});
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const loadLoans = async () => {
+    const [loanData, summaryData] = await Promise.all([
+      requestJson(`${API_BASE}/loans`),
+      requestJson(`${API_BASE}/loans/summary`),
+    ]);
+    setLoans(loanData);
+    setSummary(summaryData);
+  };
+
+  useEffect(() => {
+    loadLoans().catch((loadError) => setError(`Unable to load lending records: ${loadError.message}`));
+  }, []);
+
+  const createLoan = async (event) => {
+    event.preventDefault();
+    if (!loanForm.borrower_name.trim() || Number(loanForm.principal) <= 0) return;
+    setError('');
+    setSaving(true);
+    try {
+      await requestJson(`${API_BASE}/loans`, {
+        method: 'POST',
+        body: JSON.stringify({
+          ...loanForm,
+          borrower_name: loanForm.borrower_name.trim(),
+          principal: Number(loanForm.principal),
+          expected_repayment_date: loanForm.expected_repayment_date || null,
+        }),
+      });
+      setLoanForm({
+        borrower_name: '',
+        principal: '',
+        date_lent: getLocalDateString(),
+        expected_repayment_date: '',
+        notes: '',
+      });
+      await loadLoans();
+    } catch (saveError) {
+      setError(`Lending record was not saved: ${saveError.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addRepayment = async (loan) => {
+    const amount = Number(repaymentAmounts[loan.id]);
+    if (!amount || amount <= 0) return;
+    setError('');
+    setSaving(true);
+    try {
+      await requestJson(`${API_BASE}/loans/${loan.id}/repayments`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, paid_at: getLocalDateString() }),
+      });
+      setRepaymentAmounts((previous) => ({ ...previous, [loan.id]: '' }));
+      await loadLoans();
+    } catch (saveError) {
+      setError(`Repayment was not recorded: ${saveError.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <main className="page-shell">
+      <div className="container page-stack">
+        <div className="page-header">
+          <div>
+            <span className="eyebrow dark">Money lent and repayments</span>
+            <h1>Lending</h1>
+          </div>
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+
+        <section className="stat-grid report-grid">
+          <StatCard label="Total money lent" value={formatCurrency(Number(summary.total_lent))} tone="neutral" icon={<Banknote size={18} />} />
+          <StatCard label="Money recovered" value={formatCurrency(Number(summary.total_recovered))} tone="success" icon={<TrendingUp size={18} />} />
+          <StatCard label="Outstanding" value={formatCurrency(Number(summary.outstanding))} tone="warning" icon={<Wallet size={18} />} />
+          <StatCard label="Overdue repayments" value={String(summary.overdue_count)} tone="danger" icon={<Bell size={18} />} />
+        </section>
+
+        <section className="content-grid lending-layout">
+          <div className="card-surface form-card">
+            <div className="panel-header"><h3>Record money lent</h3></div>
+            <p className="muted-copy">Lending is tracked as money owed to you, not as an expense or income.</p>
+            <form className="stack-form" onSubmit={createLoan}>
+              <div className="field-group">
+                <label htmlFor="borrower-name">Borrower</label>
+                <input id="borrower-name" value={loanForm.borrower_name} onChange={(event) => setLoanForm((prev) => ({ ...prev, borrower_name: event.target.value }))} placeholder="Person's name" required />
+              </div>
+              <div className="field-group">
+                <label htmlFor="loan-principal">Amount lent</label>
+                <input id="loan-principal" type="number" min="0.01" step="0.01" value={loanForm.principal} onChange={(event) => setLoanForm((prev) => ({ ...prev, principal: event.target.value }))} placeholder="0.00" required />
+              </div>
+              <div className="two-field-row">
+                <div className="field-group">
+                  <label htmlFor="date-lent">Date lent</label>
+                  <input id="date-lent" type="date" value={loanForm.date_lent} onChange={(event) => setLoanForm((prev) => ({ ...prev, date_lent: event.target.value }))} required />
+                </div>
+                <div className="field-group">
+                  <label htmlFor="repayment-due">Expected repayment</label>
+                  <input id="repayment-due" type="date" value={loanForm.expected_repayment_date} onChange={(event) => setLoanForm((prev) => ({ ...prev, expected_repayment_date: event.target.value }))} />
+                </div>
+              </div>
+              <div className="field-group">
+                <label htmlFor="loan-notes">Notes</label>
+                <input id="loan-notes" value={loanForm.notes} onChange={(event) => setLoanForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Optional" />
+              </div>
+              <button className="btn btn-primary full-btn" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save lending record'}</button>
+            </form>
+          </div>
+
+          <div className="loan-list">
+            {loans.length === 0 ? (
+              <div className="card-surface empty-state"><p>No lending records yet. Money you lend will appear here with its repayment history.</p></div>
+            ) : loans.map((loan) => {
+              const outstanding = Number(loan.principal) - Number(loan.repaid_amount);
+              const overdue = loan.status !== 'repaid' && loan.expected_repayment_date && loan.expected_repayment_date < getLocalDateString();
+              return (
+                <article key={loan.id} className="card-surface loan-card">
+                  <div className="loan-card-header">
+                    <div>
+                      <h3>{loan.borrower_name}</h3>
+                      <p>Lent {loan.date_lent}{loan.expected_repayment_date ? ` · Due ${loan.expected_repayment_date}` : ''}</p>
+                    </div>
+                    <span className={`chip ${loan.status === 'repaid' ? 'success' : overdue ? 'danger' : 'warning'}`}>
+                      {loan.status === 'repaid' ? 'Repaid' : overdue ? 'Overdue' : loan.status === 'partially_repaid' ? 'Partially repaid' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className="loan-amount-grid">
+                    <div><small>Principal</small><strong>{formatCurrency(Number(loan.principal))}</strong></div>
+                    <div><small>Recovered</small><strong>{formatCurrency(Number(loan.repaid_amount))}</strong></div>
+                    <div><small>Outstanding</small><strong>{formatCurrency(outstanding)}</strong></div>
+                  </div>
+                  {loan.notes && <p className="muted-copy">{loan.notes}</p>}
+                  {outstanding > 0 && (
+                    <div className="repayment-entry">
+                      <input
+                        type="number"
+                        min="0.01"
+                        max={outstanding}
+                        step="0.01"
+                        value={repaymentAmounts[loan.id] || ''}
+                        onChange={(event) => setRepaymentAmounts((previous) => ({ ...previous, [loan.id]: event.target.value }))}
+                        placeholder="Repayment amount"
+                        aria-label={`Repayment amount from ${loan.borrower_name}`}
+                      />
+                      <button className="btn btn-secondary" type="button" disabled={saving} onClick={() => addRepayment(loan)}>Record repayment</button>
+                    </div>
+                  )}
+                  {loan.repayments?.length > 0 && (
+                    <details className="repayment-history">
+                      <summary>Repayment history ({loan.repayments.length})</summary>
+                      {loan.repayments.map((repayment) => (
+                        <div key={repayment.id} className="split-row">
+                          <span>{repayment.paid_at}</span>
+                          <strong>{formatCurrency(Number(repayment.amount))}</strong>
+                        </div>
+                      ))}
+                    </details>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
 
@@ -928,7 +1473,7 @@ function PrivacyPage() {
         <div className="container privacy-document">
           <span className="eyebrow">Privacy notice</span>
           <h1>How Ruveon handles your information</h1>
-          <p className="privacy-updated">Last updated: October 26, 2026</p>
+          <p className="privacy-updated">Last updated: October 30, 2026</p>
           <p className="privacy-lead">
             Ruveon is a personal finance tracker. This notice explains what information the app uses,
             why it is used, and what happens when you connect Ruvi on WhatsApp.
@@ -961,8 +1506,9 @@ function PrivacyPage() {
               <li>
                 <strong>WhatsApp connection:</strong> if you choose to link WhatsApp, the WhatsApp
                 account identifier and link status are stored. Incoming message text is processed to
-                handle link/unlink commands or answer your question. Message identifiers are retained
-                to prevent duplicate processing; the app does not save the message text as chat history.
+                handle link/unlink commands, answer questions, or save a financial action you request.
+                Message identifiers and generated replies are retained to prevent duplicate actions and
+                retry failed replies; incoming message text is not retained as chat history.
               </li>
             </ul>
           </section>
@@ -975,10 +1521,12 @@ function PrivacyPage() {
                 savings, dashboard, and reporting features.
               </li>
               <li>
-                If you message Ruvi on WhatsApp, your question and a limited summary of your current
-                month’s income, expenses, cash flow, budget, transaction count, and savings goals are
-                sent to Google Gemini to generate a reply. Individual transaction descriptions and
-                notes are not included in that summary.
+                If you message Ruvi on WhatsApp, the message text and a limited account summary
+                (current-month income, expenses, cash flow, budget, transaction count, savings goals,
+                and outstanding lending names and amounts) are sent to Google Gemini to interpret the
+                request or generate a reply. Individual transaction descriptions and notes are not
+                included in that summary. If you ask Ruvi to record or update a financial action, the
+                validated result is saved to your Ruveon account and appears on the website.
               </li>
               <li>
                 WhatsApp messages are transmitted through Meta’s WhatsApp Business Platform. Meta,
@@ -1029,7 +1577,7 @@ function PrivacyPage() {
   );
 }
 
-function Header({ authenticated, onLogout, onConnectWhatsApp }) {
+function Header({ authenticated, onLogout, onConnectWhatsApp, whatsappStatus }) {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navItems = [
@@ -1038,6 +1586,7 @@ function Header({ authenticated, onLogout, onConnectWhatsApp }) {
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/transactions', label: 'Transactions' },
     { to: '/budgets', label: 'Budgets' },
+    { to: '/lending', label: 'Lending' },
     { to: '/reports', label: 'Reports' },
     { to: '/savings', label: 'Savings' },
   ];
@@ -1100,13 +1649,20 @@ function Header({ authenticated, onLogout, onConnectWhatsApp }) {
                 <button
                   type="button"
                   className="btn btn-ghost"
+                  disabled={!whatsappStatus?.configured || whatsappStatus.linked}
                   onClick={() => {
                     setMobileMenuOpen(false);
                     onConnectWhatsApp();
                   }}
                 >
                   <MessageSquareText size={16} />
-                  Connect WhatsApp
+                  {whatsappStatus?.linked
+                    ? 'WhatsApp connected'
+                    : whatsappStatus?.configured
+                      ? 'Connect WhatsApp'
+                      : whatsappStatus
+                        ? 'WhatsApp unavailable'
+                        : 'Checking WhatsApp…'}
                 </button>
                 <button type="button" className="icon-button" aria-label="Notifications">
                   <Bell size={18} />
@@ -1130,7 +1686,7 @@ function Header({ authenticated, onLogout, onConnectWhatsApp }) {
   );
 }
 
-function LandingPage() {
+function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp }) {
   const navigate = useNavigate();
 
   const scrollToSection = (id) => {
@@ -1141,10 +1697,10 @@ function LandingPage() {
   };
 
   const featureCards = [
-    { title: 'Expense tracking', icon: Wallet, description: 'Capture and categorize purchases in the portal, with your activity saved to your account.' },
-    { title: 'Smart budgets', icon: Calculator, description: 'Set monthly and category limits with clear warnings before overspending.' },
-    { title: 'Savings insights', icon: PiggyBank, description: 'See where you can save more and monitor progress toward goals.' },
-    { title: 'Reports', icon: BarChart3, description: 'Review trends and compare cash flow with simple, accurate reporting tools.' },
+    { title: 'Expense tracking', path: '/features/expense-tracking', icon: Wallet, description: 'Capture and categorize purchases in the portal, with your activity saved to your account.' },
+    { title: 'Smart budgets', path: '/features/smart-budgeting', icon: Calculator, description: 'Set monthly and category limits with clear warnings before overspending.' },
+    { title: 'Savings insights', path: '/features/savings-insights', icon: PiggyBank, description: 'See where you can save more and monitor progress toward goals.' },
+    { title: 'Reports', path: '/features/reports', icon: BarChart3, description: 'Review trends and compare cash flow with simple, accurate reporting tools.' },
   ];
 
   return (
@@ -1178,21 +1734,21 @@ function LandingPage() {
           <div className="hero-visual">
             <div className="dashboard-preview card-surface">
               <div className="preview-header">
-                <span className="live-pill">Demo data</span>
-                <span className="preview-date">October 2026</span>
+                <span className="live-pill">Your finance hub</span>
+                <span className="preview-date">{currentDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' })}</span>
               </div>
               <div className="preview-grid">
                 <div className="mini-card">
-                  <p>Total expenses</p>
-                  <strong>₹49,250</strong>
+                  <p>Transactions</p>
+                  <strong>Track every rupee</strong>
                 </div>
                 <div className="mini-card">
-                  <p>Net cash flow</p>
-                  <strong>₹29,180</strong>
+                  <p>Money habits</p>
+                  <strong>Clear, useful insights</strong>
                 </div>
                 <div className="mini-card wide">
-                  <p>Budget status</p>
-                  <strong>₹55,000 / ₹49,250</strong>
+                  <p>Monthly budget</p>
+                  <strong>Set a limit that works for you</strong>
                 </div>
               </div>
               <div className="preview-bars">
@@ -1208,6 +1764,71 @@ function LandingPage() {
         </div>
       </section>
 
+      <section className="section ruvi-intro-section">
+        <div className="container">
+          <div className="whatsapp-card card-surface">
+            <div className="whatsapp-bubble">
+              <MessageSquareText size={22} />
+              <div>
+                <strong>Ruvi AI Assistant</strong>
+                <p>Manage everyday finances through a familiar conversation.</p>
+              </div>
+            </div>
+            <div className="whatsapp-details">
+              <div>
+                <h3>Connect with Ruvi on WhatsApp</h3>
+                <p>
+                  Record expenses and money received, ask about spending, and get useful summaries.
+                  Your WhatsApp activity is linked to the same Ruveon account you use on the web.
+                </p>
+                {authenticated && user && (
+                  <p className="connection-status">
+                    Signed in as {user.full_name || user.email}.
+                    {whatsappStatus?.linked ? ' WhatsApp is connected.' : ''}
+                  </p>
+                )}
+                {authenticated && whatsappStatus && !whatsappStatus.configured && (
+                  <p className="connection-status" role="status">
+                    WhatsApp is temporarily unavailable while the service setup is completed.
+                  </p>
+                )}
+                {authenticated && whatsappStatus?.configured && !whatsappStatus.assistant_available && (
+                  <p className="connection-status" role="status">
+                    WhatsApp linking is available; Ruvi replies need the AI service configured.
+                  </p>
+                )}
+              </div>
+              <div className="whatsapp-actions">
+                {!authenticated ? (
+                  <>
+                    <button className="btn btn-primary" onClick={() => navigate('/login')}>
+                      Connect WhatsApp <ArrowRight size={17} />
+                    </button>
+                    <div className="whatsapp-auth-links">
+                      <Link to="/login" className="text-link">Login</Link>
+                      <Link to="/register" className="text-link">Create account</Link>
+                    </div>
+                  </>
+                ) : whatsappStatus?.configured ? (
+                  <button
+                    className="btn btn-primary"
+                    onClick={onConnectWhatsApp}
+                    disabled={whatsappStatus.linked}
+                  >
+                    {whatsappStatus.linked ? <CheckCircle2 size={17} /> : <MessageSquareText size={17} />}
+                    {whatsappStatus.linked ? 'WhatsApp connected' : 'Connect WhatsApp'}
+                  </button>
+                ) : (
+                  <button className="btn btn-secondary" disabled>
+                    {whatsappStatus ? 'Setup in progress' : 'Checking availability'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="features" className="section">
         <div className="container">
           <div className="section-heading">
@@ -1215,14 +1836,15 @@ function LandingPage() {
             <h2>Everything you need to manage personal finance with clarity.</h2>
           </div>
           <div className="feature-grid">
-            {featureCards.map(({ title, icon: Icon, description }) => (
-              <div key={title} className="info-card card-surface">
+            {featureCards.map(({ title, path, icon: Icon, description }) => (
+              <Link key={title} to={path} className="info-card card-surface feature-link">
                 <div className="icon-badge">
                   <Icon size={20} />
                 </div>
                 <h3>{title}</h3>
                 <p>{description}</p>
-              </div>
+                <span className="feature-link-label">Explore feature <ArrowRight size={16} /></span>
+              </Link>
             ))}
           </div>
         </div>
@@ -1243,35 +1865,6 @@ function LandingPage() {
             <p>
               Use category budgets to identify risk early, monitor remaining spend, and adjust before the month slips away.
             </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="container">
-          <div className="section-heading narrow">
-            <span className="eyebrow dark">The Ruvi experience</span>
-            <h2>Built for everyday habits, not just data entry.</h2>
-          </div>
-          <div className="whatsapp-card card-surface">
-            <div className="whatsapp-bubble">
-              <MessageSquareText size={22} />
-              <div>
-                <strong>Ruvi</strong>
-                <p>“You spent 18% more on food this week. Want a budget suggestion?”</p>
-              </div>
-            </div>
-            <div className="whatsapp-details">
-              <div>
-                <h3>WhatsApp-first finance</h3>
-                <p>
-                  Ruvi works with the official WhatsApp Business Platform so users can ask account questions and get spending guidance in conversation.
-                </p>
-              </div>
-              <button className="btn btn-primary" onClick={() => navigate('/login')}>
-                Sign in to Ruveon
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -1323,7 +1916,7 @@ function LandingPage() {
             </div>
             <div className="privacy-item">
               <Sparkles size={18} />
-              <span>When you message Ruvi, a limited monthly account summary and your savings goals are sent to Google Gemini to answer.</span>
+              <span>When you message Ruvi, your message and a limited account summary are sent to Google Gemini to answer or interpret requested financial actions.</span>
             </div>
             <Link to="/privacy" className="text-link">
               Read the full privacy notice <ArrowRight size={16} />
@@ -1374,7 +1967,13 @@ function LandingPage() {
   );
 }
 
-function AuthPage({ authMode, setAuthMode, authForm, authErrors, handleAuthInput, handleSubmitAuth, showPassword, setShowPassword, authenticated }) {
+function AuthPage({ authMode, setAuthMode, authForm, authErrors, authSubmitting, handleAuthInput, handleSubmitAuth, showPassword, setShowPassword, authenticated }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    setAuthMode(location.pathname === '/register' ? 'register' : 'login');
+  }, [location.pathname, setAuthMode]);
+
   if (authenticated) return <Navigate to="/dashboard" replace />;
 
   return (
@@ -1395,6 +1994,12 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, handleAuthInput
               </button>
             </div>
           </div>
+
+          {location.state?.sessionExpired && (
+            <p className="session-expired-message" role="alert">
+              Your session has expired. Please log in again.
+            </p>
+          )}
 
           <form onSubmit={handleSubmitAuth} className="auth-form">
             {authMode === 'register' && (
@@ -1440,8 +2045,8 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, handleAuthInput
               {authErrors.password && <small>{authErrors.password}</small>}
             </div>
 
-            <button type="submit" className="btn btn-primary full-btn">
-              {authMode === 'login' ? 'Log in' : 'Create account'}
+            <button type="submit" className="btn btn-primary full-btn" disabled={authSubmitting}>
+              {authSubmitting ? 'Please wait…' : authMode === 'login' ? 'Log in' : 'Create account'}
             </button>
             <p className="auth-privacy-note">
               Please read the <Link to="/privacy">Privacy Notice</Link> before using Ruveon.
@@ -1480,8 +2085,20 @@ function DashboardPage({ transactions, reportPeriod, setReportPeriod, summary, c
           <StatCard label="Total expenses" value={formatCurrency(summary.totalExpenses)} delta="-" tone="danger" icon={<TrendingDown size={18} />} />
           <StatCard label="Total income" value={formatCurrency(summary.totalIncome)} delta="+" tone="success" icon={<TrendingUp size={18} />} />
           <StatCard label="Net cash flow" value={formatCurrency(summary.netCashFlow)} delta={summary.netCashFlow >= 0 ? 'Positive' : 'Negative'} tone={summary.netCashFlow >= 0 ? 'success' : 'warning'} icon={<Wallet size={18} />} />
-          <StatCard label="Monthly budget" value={formatCurrency(summary.monthlyBudget)} delta={`${formatCurrency(summary.remainingBudget)} remaining`} tone="neutral" icon={<Banknote size={18} />} />
+          <StatCard
+            label="Monthly budget"
+            value={formatCurrency(summary.monthlyBudget)}
+            delta={summary.monthlyBudget > 0 ? `${formatCurrency(summary.remainingBudget)} remaining` : 'Create a monthly plan'}
+            tone="neutral"
+            icon={<Banknote size={18} />}
+          />
         </section>
+        {summary.monthlyBudget === 0 && (
+          <div className="empty-budget-prompt card-surface">
+            <p>You haven't created a monthly budget yet. Set your budget to start managing your spending.</p>
+            <Link to="/budgets" className="btn btn-primary">Set a budget <ArrowRight size={16} /></Link>
+          </div>
+        )}
 
         <section className="content-grid two-col">
           <div className="card-surface panel-card">
@@ -1632,8 +2249,12 @@ function TransactionsPage({
   onEdit,
   onDelete,
   allCategories,
+  hasMoreTransactions,
+  loadingMoreTransactions,
+  onLoadMore,
 }) {
-  const categoryOptions = ['Food', 'Housing', 'Transport', 'Bills', 'Shopping', 'Entertainment', 'Health', 'Travel', 'Salary', 'Freelance', 'Investments', 'Other'];
+  const suggestedCategories = ['Food', 'Housing', 'Transport', 'Bills', 'Shopping', 'Entertainment', 'Health', 'Travel', 'Salary', 'Freelance', 'Investments', 'Other'];
+  const categoryOptions = [...new Set([...suggestedCategories, ...allCategories])];
 
   return (
     <main className="page-shell">
@@ -1645,7 +2266,7 @@ function TransactionsPage({
         <section className="toolbar card-surface">
           <div className="search-box">
             <Search size={16} />
-            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search description or merchant" />
+            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search description, merchant, or category" />
           </div>
           <div className="filter-row">
             <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
@@ -1674,7 +2295,7 @@ function TransactionsPage({
             <div className="panel-header">
               <h3>{transactionEditId ? 'Edit transaction' : 'Add transaction'}</h3>
               {transactionEditId && (
-                <button className="btn btn-ghost small" onClick={() => { setTransactionEditId(null); setTransactionForm({ ...defaultForm, date: new Date().toISOString().slice(0, 10) }); }}>
+                <button className="btn btn-ghost small" onClick={() => { setTransactionEditId(null); setTransactionForm({ ...defaultForm, date: getLocalDateString() }); }}>
                   Cancel
                 </button>
               )}
@@ -1691,11 +2312,16 @@ function TransactionsPage({
                 </div>
                 <div className="field-group">
                   <label>Category</label>
-                  <select value={transactionForm.category} onChange={(event) => setTransactionForm((prev) => ({ ...prev, category: event.target.value }))}>
-                    {categoryOptions.map((category) => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
+                  <input
+                    value={transactionForm.category}
+                    onChange={(event) => setTransactionForm((prev) => ({ ...prev, category: event.target.value }))}
+                    list="transaction-category-suggestions"
+                    placeholder="Type or choose a category"
+                    required
+                  />
+                  <datalist id="transaction-category-suggestions">
+                    {categoryOptions.map((category) => <option key={category} value={category} />)}
+                  </datalist>
                 </div>
               </div>
 
@@ -1713,7 +2339,7 @@ function TransactionsPage({
               <div className="two-field-row">
                 <div className="field-group">
                   <label>Amount</label>
-                  <input type="number" min="0" step="1" value={transactionForm.amount} onChange={(event) => setTransactionForm((prev) => ({ ...prev, amount: event.target.value }))} placeholder="0" required />
+                  <input type="number" min="0.01" step="0.01" value={transactionForm.amount} onChange={(event) => setTransactionForm((prev) => ({ ...prev, amount: event.target.value }))} placeholder="0.00" required />
                 </div>
                 <div className="field-group">
                   <label>Date</label>
@@ -1785,6 +2411,11 @@ function TransactionsPage({
                 ))}
               </div>
             )}
+            {hasMoreTransactions && (
+              <button className="btn btn-secondary full-btn load-more-button" type="button" onClick={onLoadMore} disabled={loadingMoreTransactions}>
+                {loadingMoreTransactions ? 'Loading…' : 'Load more transactions'}
+              </button>
+            )}
           </div>
         </section>
       </div>
@@ -1792,7 +2423,7 @@ function TransactionsPage({
   );
 }
 
-function BudgetsPage({ budgets, budgetForm, setBudgetForm, budgetEditId, setBudgetEditId, onSubmit, onDelete, transactions }) {
+function BudgetsPage({ budgets, budgetForm, setBudgetForm, budgetEditId, setBudgetEditId, onSubmit, onDelete }) {
   return (
     <main className="page-shell">
       <div className="container page-stack">
@@ -1807,16 +2438,35 @@ function BudgetsPage({ budgets, budgetForm, setBudgetForm, budgetEditId, setBudg
             </div>
             <form className="stack-form" onSubmit={onSubmit}>
               <div className="field-group">
-                <label>Category</label>
-                <input value={budgetForm.category} onChange={(event) => setBudgetForm((prev) => ({ ...prev, category: event.target.value }))} placeholder="Food" />
+                <label htmlFor="budget-kind">Budget type</label>
+                <select
+                  id="budget-kind"
+                  value={budgetForm.kind}
+                  onChange={(event) => setBudgetForm((prev) => ({
+                    ...prev,
+                    kind: event.target.value,
+                    category: event.target.value === 'overall' ? 'Overall' : prev.category === 'Overall' ? 'Food' : prev.category,
+                  }))}
+                >
+                  <option value="overall">Monthly budget</option>
+                  <option value="category">Category budget</option>
+                </select>
+              </div>
+              {budgetForm.kind === 'category' ? (
+              <div className="field-group">
+                <label htmlFor="budget-category">Category</label>
+                <input id="budget-category" value={budgetForm.category} onChange={(event) => setBudgetForm((prev) => ({ ...prev, category: event.target.value }))} placeholder="Food" required />
+              </div>
+              ) : (
+                <p className="muted-copy">This limit applies to all of your expenses for the selected month.</p>
+              )}
+              <div className="field-group">
+                <label htmlFor="budget-limit">Monthly limit</label>
+                <input id="budget-limit" type="number" min="0.01" step="0.01" value={budgetForm.limit} onChange={(event) => setBudgetForm((prev) => ({ ...prev, limit: event.target.value }))} placeholder="0.00" required />
               </div>
               <div className="field-group">
-                <label>Monthly limit</label>
-                <input type="number" min="0" value={budgetForm.limit} onChange={(event) => setBudgetForm((prev) => ({ ...prev, limit: event.target.value }))} placeholder="0" />
-              </div>
-              <div className="field-group">
-                <label>Period</label>
-                <input type="month" value={budgetForm.period} onChange={(event) => setBudgetForm((prev) => ({ ...prev, period: event.target.value }))} />
+                <label htmlFor="budget-period">Period</label>
+                <input id="budget-period" type="month" value={budgetForm.period} onChange={(event) => setBudgetForm((prev) => ({ ...prev, period: event.target.value }))} required />
               </div>
               <button type="submit" className="btn btn-primary full-btn">
                 {budgetEditId ? 'Save budget' : 'Create budget'}
@@ -1829,10 +2479,12 @@ function BudgetsPage({ budgets, budgetForm, setBudgetForm, budgetEditId, setBudg
               <h3>Monthly budget status</h3>
             </div>
             <div className="budget-list">
-              {budgets.map((budget) => {
+              {budgets.length === 0 ? (
+                <div className="empty-state"><p>No budgets yet. Create a monthly budget or a category limit to get started.</p></div>
+              ) : budgets.map((budget) => {
                 const warning = budget.remaining < 0 ? 'Exceeded' : budget.progress > 80 ? 'Approaching limit' : 'On track';
                 return (
-                  <div key={budget.category + budget.period} className="budget-card">
+                  <div key={budget.id} className="budget-card">
                     <div className="budget-head">
                       <div>
                         <strong>{budget.category}</strong>
@@ -1856,7 +2508,7 @@ function BudgetsPage({ budgets, budgetForm, setBudgetForm, budgetEditId, setBudg
                     <div className="budget-actions">
                       <button className="btn btn-ghost small" onClick={() => {
                         setBudgetEditId(budget.id);
-                        setBudgetForm({ category: budget.category, limit: String(budget.limit), period: budget.period });
+                        setBudgetForm({ category: budget.category, limit: String(budget.limit), period: budget.period, kind: budget.type });
                       }}>
                         Edit
                       </button>
@@ -1876,18 +2528,31 @@ function BudgetsPage({ budgets, budgetForm, setBudgetForm, budgetEditId, setBudg
 }
 
 function ReportsPage({ reportTransactions, reportSummary, reportStart, setReportStart, reportEnd, setReportEnd, transactions, getPeriodTransactions, exportCsv, setReportPeriod }) {
-  const expenseByMonth = useMemo(() => {
-    const map = {};
-    transactions.forEach((item) => {
-      if (item.type === 'expense') {
-        const month = item.date.slice(0, 7);
-        map[month] = (map[month] || 0) + Number(item.amount || 0);
-      }
+  const monthlyTrendFromLoadedTransactions = useMemo(() => {
+    const totals = {};
+    reportTransactions.forEach((item) => {
+      const month = item.date.slice(0, 7);
+      const row = totals[month] || { month, income: 0, expense: 0 };
+      row[item.type] += Number(item.amount || 0);
+      totals[month] = row;
     });
-    return Object.entries(map)
-      .map(([month, value]) => ({ month, value }))
-      .slice(-6);
-  }, [transactions]);
+    return Object.values(totals).sort((a, b) => a.month.localeCompare(b.month));
+  }, [reportTransactions]);
+  const monthlyTrend = reportSummary.monthlyTrend?.length
+    ? reportSummary.monthlyTrend
+    : monthlyTrendFromLoadedTransactions;
+  const categorySpendingFromLoadedTransactions = useMemo(() => {
+    const totals = {};
+    reportTransactions.filter((item) => item.type === 'expense').forEach((item) => {
+      totals[item.category] = (totals[item.category] || 0) + Number(item.amount || 0);
+    });
+    return Object.entries(totals)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [reportTransactions]);
+  const categorySpending = reportSummary.categorySpending?.length
+    ? reportSummary.categorySpending
+    : categorySpendingFromLoadedTransactions;
 
   return (
     <main className="page-shell">
@@ -1915,11 +2580,27 @@ function ReportsPage({ reportTransactions, reportSummary, reportStart, setReport
             </div>
             <div className="chart-wrap">
               <Suspense fallback={<div className="chart-loading" />}>
-                <MonthlyExpenseChart data={expenseByMonth} />
+                <MonthlyExpenseChart data={monthlyTrend} />
               </Suspense>
             </div>
           </div>
 
+          <div className="card-surface panel-card">
+            <div className="panel-header">
+              <h3>Category spending</h3>
+            </div>
+            <div className="split-list">
+              {categorySpending.length ? categorySpending.map((item) => (
+                <div key={item.name} className="split-row">
+                  <span>{item.name}</span>
+                  <strong>{formatCurrency(item.value)}</strong>
+                </div>
+              )) : <p className="muted-copy">No expense categories in this date range.</p>}
+            </div>
+          </div>
+        </section>
+
+        <section className="content-grid">
           <div className="card-surface panel-card">
             <div className="panel-header">
               <h3>Largest transactions</h3>

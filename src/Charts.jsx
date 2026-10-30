@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -64,7 +65,9 @@ export function MonthlyExpenseChart({ data }) {
         <XAxis dataKey="month" stroke="#94a3b8" />
         <YAxis stroke="#94a3b8" />
         <Tooltip formatter={(value) => formatCurrency(value)} />
-        <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} />
+        <Legend />
+        <Bar dataKey="income" name="Income" fill="#38bdf8" radius={[8, 8, 0, 0]} />
+        <Bar dataKey="expense" name="Expenses" fill="#10b981" radius={[8, 8, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

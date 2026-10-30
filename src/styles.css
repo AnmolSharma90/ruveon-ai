@@ -1324,3 +1324,263 @@ img { max-width: 100%; display: block; }
     width: 100%;
   }
 }
+
+.ruvi-intro-section {
+  padding-top: 0;
+}
+
+.whatsapp-actions {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+  min-width: 190px;
+}
+
+.whatsapp-auth-links {
+  display: flex;
+  gap: 16px;
+}
+
+.connection-status,
+.muted-copy {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.feature-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.feature-link:hover {
+  transform: translateY(-4px);
+  border-color: rgba(56, 189, 248, 0.48);
+}
+
+.feature-link-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 18px;
+  color: #a9e5ff;
+  font-weight: 650;
+}
+
+.feature-page .section {
+  padding-top: 48px;
+}
+
+.feature-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.back-chevron {
+  transform: rotate(180deg);
+}
+
+.feature-detail {
+  padding: clamp(24px, 5vw, 56px);
+}
+
+.feature-detail-icon {
+  display: flex;
+  width: 62px;
+  height: 62px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  border-radius: 18px;
+  color: #b7f6d8;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(56, 189, 248, 0.18));
+}
+
+.feature-detail h1 {
+  margin: 14px 0 10px;
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+}
+
+.feature-detail-intro {
+  max-width: 70ch;
+  color: var(--text-soft);
+  font-size: 1.15rem;
+  line-height: 1.7;
+}
+
+.feature-detail-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(240px, 0.7fr);
+  gap: 36px;
+  margin-top: 30px;
+}
+
+.feature-detail-content > div > p {
+  color: var(--text-soft);
+  line-height: 1.8;
+}
+
+.feature-takeaways {
+  align-self: start;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.feature-takeaways h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.feature-takeaway {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.feature-takeaway svg {
+  flex: 0 0 auto;
+  color: var(--green);
+  margin-top: 2px;
+}
+
+.empty-budget-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 24px;
+  padding: 18px 22px;
+}
+
+.empty-budget-prompt p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.session-loading {
+  display: flex;
+  min-height: 45vh;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-soft);
+}
+
+.session-expired-message {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--red-soft);
+  color: #ffd9d9;
+}
+
+.lending-layout {
+  grid-template-columns: minmax(270px, 0.75fr) minmax(0, 1.5fr);
+  align-items: start;
+}
+
+.loan-list {
+  display: grid;
+  gap: 18px;
+}
+
+.loan-card {
+  padding: 22px;
+}
+
+.loan-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.loan-card-header h3 {
+  margin: 0 0 6px;
+}
+
+.loan-card-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.loan-amount-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.loan-amount-grid > div {
+  display: grid;
+  gap: 6px;
+}
+
+.loan-amount-grid small {
+  color: var(--muted);
+}
+
+.repayment-entry {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.repayment-entry input {
+  min-width: 0;
+  flex: 1;
+}
+
+.repayment-history {
+  margin-top: 18px;
+  color: var(--text-soft);
+}
+
+.repayment-history summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+
+.repayment-history .split-row {
+  padding: 8px 0;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (max-width: 980px) {
+  .feature-detail-content {
+    grid-template-columns: 1fr;
+  }
+
+  .lending-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .whatsapp-actions {
+    justify-items: start;
+  }
+}
+
+@media (max-width: 620px) {
+  .empty-budget-prompt {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .loan-amount-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .repayment-entry {
+    flex-direction: column;
+  }
+}
