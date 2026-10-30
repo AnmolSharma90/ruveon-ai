@@ -727,7 +727,11 @@ function App() {
       });
 
       persistSession(response.user, response.access_token, response.session_idle_timeout_seconds);
-      navigate('/dashboard');
+      if (new URLSearchParams(location.search).get('connect') === 'whatsapp') {
+        await handleConnectWhatsApp();
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       const message = error.message || 'Authentication failed';
       if (message.toLowerCase().includes('already exists')) {
@@ -1597,22 +1601,11 @@ function Header({ authenticated, onLogout, onConnectWhatsApp, whatsappStatus }) 
 
   return (
     <header className="topbar">
-      <div className="container topbar-inner">
+      <div className={`container topbar-inner${authenticated ? ' has-session-actions' : ''}`}>
         <Link to="/" className="brand" aria-label="Ruveon AI home">
           <span className="brand-mark">R</span>
           <span>Ruveon AI</span>
         </Link>
-
-        <button
-          type="button"
-          className="mobile-menu-toggle"
-          aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-          aria-expanded={mobileMenuOpen}
-          aria-controls="site-navigation"
-          onClick={() => setMobileMenuOpen((open) => !open)}
-        >
-          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
 
         <div id="site-navigation" className={`topbar-menu${mobileMenuOpen ? ' is-open' : ''}`}>
           <nav className="main-nav" aria-label="Main navigation">
@@ -1633,54 +1626,54 @@ function Header({ authenticated, onLogout, onConnectWhatsApp, whatsappStatus }) 
               );
             })}
           </nav>
-
-          <div className="topbar-actions">
-            {!authenticated ? (
-              <>
-                <Link to="/login" className="btn btn-ghost" onClick={() => setMobileMenuOpen(false)}>
-                  Login
-                </Link>
-                <Link to="/register" className="btn btn-primary" onClick={() => setMobileMenuOpen(false)}>
-                  Sign Up
-                </Link>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  disabled={!whatsappStatus?.configured || whatsappStatus.linked}
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onConnectWhatsApp();
-                  }}
-                >
-                  <MessageSquareText size={16} />
-                  {whatsappStatus?.linked
-                    ? 'WhatsApp connected'
-                    : whatsappStatus?.configured
-                      ? 'Connect WhatsApp'
-                      : whatsappStatus
-                        ? 'WhatsApp unavailable'
-                        : 'Checking WhatsApp…'}
-                </button>
-                <button type="button" className="icon-button" aria-label="Notifications">
-                  <Bell size={18} />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onLogout();
-                  }}
-                >
-                  Log out
-                </button>
-              </>
-            )}
-          </div>
         </div>
+
+        {authenticated && (
+          <div className="topbar-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={!whatsappStatus?.configured || whatsappStatus.linked}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onConnectWhatsApp();
+              }}
+            >
+              <MessageSquareText size={16} />
+              {whatsappStatus?.linked
+                ? 'WhatsApp connected'
+                : whatsappStatus?.configured
+                  ? 'Connect WhatsApp'
+                  : whatsappStatus
+                    ? 'WhatsApp unavailable'
+                    : 'Checking WhatsApp…'}
+            </button>
+            <button type="button" className="icon-button" aria-label="Notifications">
+              <Bell size={18} />
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onLogout();
+              }}
+            >
+              Log out
+            </button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="mobile-menu-toggle"
+          aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="site-navigation"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
       </div>
     </header>
   );
@@ -1708,6 +1701,20 @@ function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp })
       <section className="hero section">
         <div className="container hero-grid">
           <div className="hero-copy">
+            {!authenticated && (
+              <div className="landing-entry-actions" aria-label="Account and WhatsApp actions">
+                <Link to="/login" className="btn btn-ghost">Login</Link>
+                <Link to="/register" className="btn btn-primary">Sign Up</Link>
+                <Link
+                  to="/login?connect=whatsapp"
+                  className="btn btn-secondary"
+                  aria-label="Connect Ruvi on WhatsApp"
+                >
+                  <MessageSquareText size={16} />
+                  WhatsApp
+                </Link>
+              </div>
+            )}
             <span className="eyebrow">
               <Sparkles size={16} />
               Premium personal finance intelligence
@@ -1734,21 +1741,34 @@ function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp })
           <div className="hero-visual">
             <div className="dashboard-preview card-surface">
               <div className="preview-header">
-                <span className="live-pill">Your finance hub</span>
+                <span className="live-pill">Illustrative demo</span>
                 <span className="preview-date">{currentDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' })}</span>
               </div>
               <div className="preview-grid">
                 <div className="mini-card">
-                  <p>Transactions</p>
-                  <strong>Track every rupee</strong>
+                  <p>Monthly income</p>
+                  <strong>₹78,430</strong>
                 </div>
                 <div className="mini-card">
-                  <p>Money habits</p>
-                  <strong>Clear, useful insights</strong>
+                  <p>Total expenses</p>
+                  <strong>₹49,250</strong>
                 </div>
                 <div className="mini-card wide">
-                  <p>Monthly budget</p>
-                  <strong>Set a limit that works for you</strong>
+                  <p>Net cash flow</p>
+                  <strong>₹29,180</strong>
+                </div>
+              </div>
+              <div className="demo-budget">
+                <div className="demo-budget-label">
+                  <span>Example budget</span>
+                  <strong>₹49,250 <small>of ₹55,000</small></strong>
+                </div>
+                <div
+                  className="demo-budget-track"
+                  role="img"
+                  aria-label="Example budget: 49,250 rupees spent of 55,000 rupees"
+                >
+                  <span />
                 </div>
               </div>
               <div className="preview-bars">
@@ -1759,6 +1779,7 @@ function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp })
                 <span style={{ height: '64%' }} />
                 <span style={{ height: '90%' }} />
               </div>
+              <p className="demo-preview-note">Sample figures only. Your new account starts at ₹0.</p>
             </div>
           </div>
         </div>
@@ -1800,15 +1821,10 @@ function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp })
               </div>
               <div className="whatsapp-actions">
                 {!authenticated ? (
-                  <>
-                    <button className="btn btn-primary" onClick={() => navigate('/login')}>
-                      Connect WhatsApp <ArrowRight size={17} />
-                    </button>
-                    <div className="whatsapp-auth-links">
-                      <Link to="/login" className="text-link">Login</Link>
-                      <Link to="/register" className="text-link">Create account</Link>
-                    </div>
-                  </>
+                  <Link to="/login?connect=whatsapp" className="btn btn-primary">
+                    <MessageSquareText size={17} />
+                    Connect to Ruvi on WhatsApp
+                  </Link>
                 ) : whatsappStatus?.configured ? (
                   <button
                     className="btn btn-primary"
@@ -1969,6 +1985,7 @@ function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp })
 
 function AuthPage({ authMode, setAuthMode, authForm, authErrors, authSubmitting, handleAuthInput, handleSubmitAuth, showPassword, setShowPassword, authenticated }) {
   const location = useLocation();
+  const connectingWhatsApp = new URLSearchParams(location.search).get('connect') === 'whatsapp';
 
   useEffect(() => {
     setAuthMode(location.pathname === '/register' ? 'register' : 'login');
@@ -1994,6 +2011,12 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, authSubmitting,
               </button>
             </div>
           </div>
+
+          {connectingWhatsApp && (
+            <p className="whatsapp-auth-notice" role="status">
+              Sign in or create your account first. We’ll open the secure WhatsApp connection after authentication.
+            </p>
+          )}
 
           {location.state?.sessionExpired && (
             <p className="session-expired-message" role="alert">
