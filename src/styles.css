@@ -233,8 +233,20 @@ img { max-width: 100%; display: block; }
   padding: 92px 0;
 }
 
+.landing-page {
+  padding-bottom: 20px;
+}
+
+.landing-page > .section {
+  padding: 42px 0;
+}
+
 .hero.section {
   padding: clamp(44px, 5vw, 64px) 0;
+}
+
+.landing-page > .hero.section {
+  padding: 28px 0 38px;
 }
 
 .alt-section {
@@ -272,8 +284,8 @@ img { max-width: 100%; display: block; }
   margin: 0;
   max-width: 56ch;
   color: var(--text-soft);
-  font-size: 1.08rem;
-  line-height: 1.75;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .eyebrow {
@@ -471,7 +483,48 @@ img { max-width: 100%; display: block; }
   justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+}
+
+.landing-page .section-heading {
+  margin-bottom: 16px;
+}
+
+.landing-page .info-card,
+.landing-page .faq-item {
+  padding: 18px 16px;
+}
+
+.landing-page .icon-badge {
+  margin-bottom: 12px;
+}
+
+.landing-page .step-card span {
+  margin-bottom: 12px;
+}
+
+.landing-page .whatsapp-card {
+  padding: 20px;
+}
+
+.landing-page .whatsapp-bubble {
+  padding: 16px;
+}
+
+.landing-page .info-card p,
+.landing-page .faq-item p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.landing-page .faq-item summary {
+  cursor: pointer;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.landing-page .faq-item p {
+  margin: 12px 0 0;
 }
 
 .hero-visual .dashboard-preview {
@@ -1368,11 +1421,69 @@ img { max-width: 100%; display: block; }
     align-items: flex-start;
   }
 
+  .landing-page .feature-grid,
+  .landing-page .steps-grid,
+  .landing-page .faq-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
 }
 
 @media (max-width: 620px) {
   .section {
     padding: 72px 0;
+  }
+
+  .landing-page > .section {
+    padding: 30px 0;
+  }
+
+  .landing-page > .hero.section {
+    padding: 18px 0 24px;
+  }
+
+  .landing-page .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .landing-page .info-card {
+    padding: 16px 14px;
+  }
+
+  .landing-page .info-card h3 {
+    font-size: 1.05rem;
+  }
+
+  .landing-page .icon-badge {
+    width: 42px;
+    height: 42px;
+    margin-bottom: 8px;
+  }
+
+  .landing-page .whatsapp-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .landing-page .whatsapp-card {
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .landing-page .preview-bars {
+    height: 72px;
+    margin-top: 12px;
+  }
+
+  .landing-page .faq-list {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .landing-page .faq-item {
+    padding: 14px;
   }
 
   .hero-copy h1 {

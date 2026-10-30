@@ -1866,51 +1866,6 @@ function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp })
         </div>
       </section>
 
-      <section className="section alt-section">
-        <div className="container split-grid">
-          <div className="info-panel card-surface">
-            <span className="eyebrow dark">Expense tracking</span>
-            <h3>Capture spending wherever you are.</h3>
-            <p>
-              Log meals, bills, subscriptions, and transfers with a few taps. Ruvi keeps the process frictionless and your history organized.
-            </p>
-          </div>
-          <div className="info-panel card-surface">
-            <span className="eyebrow dark">Budget management</span>
-            <h3>Stay ahead of monthly limits.</h3>
-            <p>
-              Use category budgets to identify risk early, monitor remaining spend, and adjust before the month slips away.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="section alt-section">
-        <div className="container">
-          <div className="section-heading">
-            <span className="eyebrow dark">How it works</span>
-            <h2>A simple flow that turns money habits into action.</h2>
-          </div>
-          <div className="steps-grid">
-            <div className="step-card card-surface">
-              <span>01</span>
-              <h3>Connect your data</h3>
-              <p>Add income, spending, bills, and goals from the web portal or Ruvi.</p>
-            </div>
-            <div className="step-card card-surface">
-              <span>02</span>
-              <h3>Review trends</h3>
-              <p>See category patterns, budget health, and monthly progress at a glance.</p>
-            </div>
-            <div className="step-card card-surface">
-              <span>03</span>
-              <h3>Save smarter</h3>
-              <p>Receive human-friendly suggestions and realistic targets without confusion.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="privacy" className="section">
         <div className="container privacy-grid">
           <div>
@@ -1948,18 +1903,18 @@ function LandingPage({ authenticated, user, whatsappStatus, onConnectWhatsApp })
             <h2>Answers for the way people actually manage money.</h2>
           </div>
           <div className="faq-list">
-            <div className="faq-item card-surface">
-              <h3>Can I create an account?</h3>
+            <details className="faq-item card-surface">
+              <summary>Can I create an account?</summary>
               <p>Yes. Create an account to save and manage your own transactions, budgets, and savings goals.</p>
-            </div>
-            <div className="faq-item card-surface">
-              <h3>What happens after sign-in?</h3>
+            </details>
+            <details className="faq-item card-surface">
+              <summary>What happens after sign-in?</summary>
               <p>After signing in, choose Connect WhatsApp to open a secure account-link message when Ruvi's WhatsApp service is configured. You can also continue using the finance dashboard without linking WhatsApp.</p>
-            </div>
-            <div className="faq-item card-surface">
-              <h3>Can Ruvi automatically reply on WhatsApp?</h3>
+            </details>
+            <details className="faq-item card-surface">
+              <summary>Can Ruvi automatically reply on WhatsApp?</summary>
               <p>Yes, after the official Meta Cloud API is configured and you send the first account-link message. Ruvi answers finance questions using your account summary.</p>
-            </div>
+            </details>
           </div>
         </div>
       </section>
