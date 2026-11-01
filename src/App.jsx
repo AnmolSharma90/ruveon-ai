@@ -257,7 +257,13 @@ function App() {
   const [reportEnd, setReportEnd] = useState(() => getLocalDateString());
   const [showPassword, setShowPassword] = useState(false);
   const [authMode, setAuthMode] = useState('login');
-  const [authForm, setAuthForm] = useState({ email: '', password: '', name: '' });
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    phone_number: '',
+    identifier: '',
+    password: '',
+    name: '',
+  });
   const [authErrors, setAuthErrors] = useState({});
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const authSubmitLock = useRef(false);
@@ -708,13 +714,24 @@ function App() {
 
   const handleAuthInput = (field, value) => {
     setAuthForm((prev) => ({ ...prev, [field]: value }));
-    setAuthErrors((prev) => ({ ...prev, [field]: '' }));
+    setAuthErrors((prev) => ({ ...prev, [field]: '', form: '' }));
   };
 
   const validateAuth = () => {
     const errors = {};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email)) {
-      errors.email = 'Enter a valid email address.';
+    if (authMode === 'register') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email)) {
+        errors.email = 'Enter a valid email address.';
+      }
+      if (!/^\+[1-9]\d{7,14}$/.test(authForm.phone_number.replace(/[\s().-]/g, ''))) {
+        errors.phone_number = 'Enter an international phone number, such as +919876543210.';
+      }
+    } else if (authForm.identifier.includes('@')) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.identifier.trim())) {
+        errors.identifier = 'Enter a valid email address or phone number.';
+      }
+    } else if (!/^\+[1-9]\d{7,14}$/.test(authForm.identifier.replace(/[\s().-]/g, ''))) {
+      errors.identifier = 'Enter an email address or international phone number.';
     }
     if (!authForm.password || authForm.password.length < 8) {
       errors.password = 'Password must contain at least 8 characters.';
@@ -751,15 +768,18 @@ function App() {
     authSubmitLock.current = true;
     setAuthSubmitting(true);
     try {
-      const payload = {
-        email: authForm.email.trim().toLowerCase(),
-        password: authForm.password,
-      };
-
       const endpoint = authMode === 'register' ? `${API_BASE}/users` : `${API_BASE}/users/login`;
       const requestBody = authMode === 'register'
-        ? { ...payload, full_name: authForm.name.trim() }
-        : payload;
+        ? {
+          email: authForm.email.trim().toLowerCase(),
+          phone_number: authForm.phone_number.trim(),
+          password: authForm.password,
+          full_name: authForm.name.trim(),
+        }
+        : {
+          email_or_phone: authForm.identifier.trim(),
+          password: authForm.password,
+        };
 
       const response = await requestJson(endpoint, {
         method: 'POST',
@@ -774,10 +794,13 @@ function App() {
       }
     } catch (error) {
       const message = error.message || 'Authentication failed';
-      if (message.toLowerCase().includes('already exists')) {
-        setAuthErrors((prev) => ({ ...prev, email: 'An account already exists for this email. Please log in instead.' }));
+      if (message.toLowerCase().includes('already registered')) {
+        setAuthErrors((prev) => ({
+          ...prev,
+          form: 'An account already uses this email or phone number. Please log in instead.',
+        }));
       } else if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('unauthorized')) {
-        setAuthErrors((prev) => ({ ...prev, password: 'Invalid email or password.' }));
+        setAuthErrors((prev) => ({ ...prev, password: 'Invalid email/phone number or password.' }));
       } else {
         setAuthErrors((prev) => ({ ...prev, password: message }));
       }
@@ -1518,7 +1541,7 @@ function PrivacyPage() {
         <div className="container privacy-document">
           <span className="eyebrow">Privacy notice</span>
           <h1>How Ruveon handles your information</h1>
-          <p className="privacy-updated">Last updated: October 30, 2026</p>
+          <p className="privacy-updated">Last updated: November 1, 2026</p>
           <p className="privacy-lead">
             Ruveon is a personal finance tracker. This notice explains what information the app uses,
             why it is used, and what happens when you connect Ruvi on WhatsApp.
@@ -1540,8 +1563,9 @@ function PrivacyPage() {
             <h2>Information you provide</h2>
             <ul>
               <li>
-                <strong>Account details:</strong> your name, email address, and password. Passwords
-                are stored as password hashes; the app does not store the original password.
+                <strong>Account details:</strong> your name, email address, phone number, and
+                password. Passwords are stored as password hashes; the app does not store the
+                original password.
               </li>
               <li>
                 <strong>Finance records:</strong> transactions and the details you enter, such as
@@ -2020,6 +2044,8 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, authSubmitting,
             </p>
           )}
 
+          {authErrors.form && <p className="form-error" role="alert">{authErrors.form}</p>}
+
           <form onSubmit={handleSubmitAuth} className="auth-form">
             {authMode === 'register' && (
               <div className="field-group">
@@ -2035,17 +2061,47 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, authSubmitting,
               </div>
             )}
 
-            <div className="field-group">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                value={authForm.email}
-                onChange={(event) => handleAuthInput('email', event.target.value)}
-                placeholder="you@example.com"
-              />
-              {authErrors.email && <small>{authErrors.email}</small>}
-            </div>
+            {authMode === 'register' ? (
+              <>
+                <div className="field-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={authForm.email}
+                    onChange={(event) => handleAuthInput('email', event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                  {authErrors.email && <small>{authErrors.email}</small>}
+                </div>
+                <div className="field-group">
+                  <label htmlFor="phone-number">Phone number</label>
+                  <input
+                    id="phone-number"
+                    type="tel"
+                    autoComplete="tel"
+                    value={authForm.phone_number}
+                    onChange={(event) => handleAuthInput('phone_number', event.target.value)}
+                    placeholder="+91 98765 43210"
+                  />
+                  {authErrors.phone_number && <small>{authErrors.phone_number}</small>}
+                </div>
+              </>
+            ) : (
+              <div className="field-group">
+                <label htmlFor="email-or-phone">Email or phone number</label>
+                <input
+                  id="email-or-phone"
+                  type="text"
+                  autoComplete="username"
+                  value={authForm.identifier}
+                  onChange={(event) => handleAuthInput('identifier', event.target.value)}
+                  placeholder="you@example.com or +91 98765 43210"
+                />
+                {authErrors.identifier && <small>{authErrors.identifier}</small>}
+              </div>
+            )}
 
             <div className="field-group">
               <label htmlFor="password">Password</label>

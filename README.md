@@ -4,7 +4,8 @@ Ruveon is a personal expense-tracking website with a React frontend, a FastAPI b
 
 ## Features
 
-- Account registration and sign-in with server-side password hashing.
+- Account registration with email and international phone number, plus sign-in
+  using either identifier and a password.
 - Personal transactions, budgets, savings goals, reports, and dashboards backed by the API.
 - Custom transaction categories, monthly and category budgets, and dedicated feature guides.
 - Lending and repayment tracking, kept separate from ordinary income and expenses.

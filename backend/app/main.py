@@ -14,7 +14,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, s
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
@@ -113,12 +113,18 @@ def health() -> dict:
 @app.post(f"{settings.api_v1_prefix}/users", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> dict:
     email = str(payload.email).lower()
-    existing = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    existing = db.execute(
+        select(User).where(or_(User.email == email, User.phone_number == payload.phone_number))
+    ).scalar_one_or_none()
     if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email or phone number is already registered",
+        )
 
     user = User(
         email=email,
+        phone_number=payload.phone_number,
         full_name=payload.full_name,
         password_hash=hash_password(payload.password),
     )
@@ -127,7 +133,10 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> dict:
         db.flush()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists") from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email or phone number is already registered",
+        ) from exc
     return {
         "user": user,
         "access_token": create_access_token(db, user.id),
@@ -137,13 +146,22 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> dict:
 
 @app.post(f"{settings.api_v1_prefix}/users/login", response_model=AuthResponse)
 def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> dict:
-    email = str(payload.email).lower()
-    user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    if "@" in payload.email_or_phone:
+        identity_filter = User.email == payload.email_or_phone
+    else:
+        identity_filter = User.phone_number == payload.email_or_phone
+    user = db.execute(select(User).where(identity_filter)).scalar_one_or_none()
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email/phone number or password",
+        )
     valid, replacement_hash = verify_password(payload.password, user.password_hash)
     if not valid:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email/phone number or password",
+        )
     if replacement_hash:
         user.password_hash = replacement_hash
     return {

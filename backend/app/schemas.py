@@ -1,24 +1,48 @@
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
-from typing import Annotated
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, TypeAdapter, field_validator
 
 CategoryName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+PHONE_NUMBER_PATTERN = re.compile(r"^\+[1-9]\d{7,14}$")
+
+
+def normalize_phone_number(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Enter a phone number in international format, such as +919876543210.")
+    normalized = re.sub(r"[\s().-]", "", value)
+    if not PHONE_NUMBER_PATTERN.fullmatch(normalized):
+        raise ValueError("Enter a phone number in international format, such as +919876543210.")
+    return normalized
 
 
 class UserCreate(BaseModel):
     email: EmailStr
+    phone_number: str
     full_name: str = Field(min_length=2)
     password: str = Field(min_length=8)
 
+    @field_validator("phone_number", mode="before")
+    @classmethod
+    def validate_phone_number(cls, value: object) -> str:
+        return normalize_phone_number(value)
+
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email_or_phone: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=8)
+
+    @field_validator("email_or_phone")
+    @classmethod
+    def validate_email_or_phone(cls, value: str) -> str:
+        value = value.strip()
+        if "@" in value:
+            return str(TypeAdapter(EmailStr).validate_python(value)).lower()
+        return normalize_phone_number(value)
 
 
 class UserRead(BaseModel):
@@ -26,6 +50,7 @@ class UserRead(BaseModel):
 
     id: int
     email: EmailStr
+    phone_number: str | None = None
     full_name: str
     created_at: datetime
     updated_at: datetime
