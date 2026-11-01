@@ -15,6 +15,8 @@ Ruveon is deployed as a static React website on Vercel and a Python FastAPI API 
 8. Deploy the Vercel website. Copy its exact origin into Render's `CORS_ORIGINS` and redeploy the API.
 9. Verify the live website can register and log in, then create, read, update, and delete test transactions, budgets, and savings goals. Confirm one user's data cannot be accessed from another account. Remove test data after the checks.
 
+Vite emits content-hashed files under `/assets/`; the Vercel configuration gives those immutable assets a one-year browser cache while leaving HTML revalidated. After deployment, verify the cache header on a generated JS or CSS asset.
+
 Render runs the Alembic migrations before starting FastAPI. For a local existing database, run `alembic upgrade head` from `backend/` with `PYTHONPATH` set to `backend` and `DATABASE_URL` pointing at that database. The service command runs from `backend`, so the deployed API uses `backend/app` and `backend/alembic`; the separate root-level `app` directory is not the deployment entry point.
 
 ## Gemini setup for Ruvi

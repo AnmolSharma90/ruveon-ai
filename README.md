@@ -19,6 +19,8 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for the Vercel, Render, PostgreSQL, Gemini,
 
 The backend applies schema changes through Alembic. Before running it locally against an existing database, run `alembic upgrade head` from `backend/` with `PYTHONPATH` set to that directory. Configure `SESSION_IDLE_TIMEOUT_MINUTES` to change the server-enforced inactivity timeout; it defaults to 30 minutes.
 
+See [PERFORMANCE.md](./PERFORMANCE.md) for the measured production baseline, implemented optimizations, local verification, and deployment follow-up.
+
 Before inviting users, confirm the privacy contact in the notice is monitored, establish a reliable account-deletion and data-retention process, configure a persistent PostgreSQL database and production environment variables, and verify the deployed API and website together.
 
 ## Project layout

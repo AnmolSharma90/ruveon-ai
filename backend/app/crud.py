@@ -17,7 +17,6 @@ def get_or_create_user(db: Session, email: str, full_name: str, password_hash: s
     user = User(email=email, full_name=full_name, password_hash=password_hash)
     db.add(user)
     db.commit()
-    db.refresh(user)
     return user
 
 
@@ -33,7 +32,6 @@ def create_transaction(db: Session, user_id: int, payload: dict) -> Transaction:
     record = Transaction(user_id=user_id, **payload)
     db.add(record)
     db.commit()
-    db.refresh(record)
     return record
 
 
@@ -52,7 +50,6 @@ def update_transaction(db: Session, transaction: Transaction, payload: dict) -> 
     for key, value in payload.items():
         setattr(transaction, key, value)
     db.commit()
-    db.refresh(transaction)
     return transaction
 
 
@@ -80,7 +77,6 @@ def create_budget(db: Session, user_id: int, payload: dict) -> Budget:
     record = Budget(user_id=user_id, **payload)
     db.add(record)
     db.commit()
-    db.refresh(record)
     return record
 
 
@@ -100,7 +96,6 @@ def update_budget(db: Session, budget: Budget, payload: dict) -> Budget:
     for key, value in payload.items():
         setattr(budget, key, value)
     db.commit()
-    db.refresh(budget)
     return budget
 
 

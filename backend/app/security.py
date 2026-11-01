@@ -10,6 +10,7 @@ import uuid
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -89,12 +90,17 @@ def get_current_user(
     except (ValueError, KeyError, TypeError, json.JSONDecodeError):
         raise unauthorized from None
 
-    session = db.get(AuthSession, session_id)
+    auth_record = db.execute(
+        select(AuthSession, User)
+        .join(User, User.id == AuthSession.user_id)
+        .where(AuthSession.id == session_id, AuthSession.user_id == user_id)
+    ).one_or_none()
+    if auth_record is None:
+        raise unauthorized
+    session, user = auth_record
     now = int(time.time())
     if (
-        session is None
-        or session.user_id != user_id
-        or session.revoked_at is not None
+        session.revoked_at is not None
         or session.expires_at <= now
     ):
         raise unauthorized
@@ -110,7 +116,4 @@ def get_current_user(
     if now - session.last_activity_at >= 60:
         session.last_activity_at = now
         db.commit()
-    user = db.get(User, user_id)
-    if user is None:
-        raise unauthorized
     return user

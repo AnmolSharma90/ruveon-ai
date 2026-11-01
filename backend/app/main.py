@@ -123,8 +123,11 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> dict:
         password_hash=hash_password(payload.password),
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists") from exc
     return {
         "user": user,
         "access_token": create_access_token(db, user.id),
@@ -143,7 +146,6 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     if replacement_hash:
         user.password_hash = replacement_hash
-        db.commit()
     return {
         "user": user,
         "access_token": create_access_token(db, user.id),
@@ -378,7 +380,6 @@ def create_goal(
     record = SavingsGoal(user_id=current_user.id, **payload.model_dump())
     db.add(record)
     db.commit()
-    db.refresh(record)
     return record
 
 
@@ -395,7 +396,6 @@ def update_goal(
     for key, value in payload.model_dump().items():
         setattr(record, key, value)
     db.commit()
-    db.refresh(record)
     return record
 
 

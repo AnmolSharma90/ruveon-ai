@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -260,6 +260,7 @@ function App() {
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '' });
   const [authErrors, setAuthErrors] = useState({});
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const authSubmitLock = useRef(false);
   const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -292,6 +293,7 @@ function App() {
       setSessionValidated(true);
       return undefined;
     }
+    if (sessionValidated) return undefined;
 
     let active = true;
     const validateSession = async () => {
@@ -341,7 +343,7 @@ function App() {
       window.removeEventListener('pageshow', onPageShow);
       window.removeEventListener('pagehide', onPageHide);
     };
-  }, [activeUserId, authenticated]);
+  }, [activeUserId, authenticated, sessionValidated]);
 
   useEffect(() => {
     if (!authenticated) return undefined;
@@ -394,34 +396,62 @@ function App() {
   useEffect(() => {
     if (!authenticated || !sessionValidated) return;
 
-    const loadData = async () => {
-      setApiError('');
-      setTransactions([]);
-      setBudgets([]);
-      setSavingsGoals([]);
-      setReportSummaryApi(null);
+    let active = true;
+    setApiError('');
+    setTransactions([]);
+    setTransactionOffset(0);
+    setHasMoreTransactions(false);
+    setBudgets([]);
+    setSavingsGoals([]);
+    setWhatsappStatus(null);
+    setDashboardSummary(null);
+
+    const reportFailure = (message) => {
+      if (active) {
+        setApiError((previous) => (previous ? `${previous} ${message}` : message));
+      }
+    };
+
+    const loadTransactions = async () => {
       try {
-        const [transactionResponse, budgetResponse, goalsResponse, whatsappResponse, dashboardResponse] = await Promise.all([
-          requestJson(`${API_BASE}/transactions?limit=100&offset=0`),
-          requestJson(`${API_BASE}/budgets`),
-          requestJson(`${API_BASE}/goals`),
-          requestJson(`${API_BASE}/whatsapp/status`),
-          requestJson(`${API_BASE}/dashboard`),
-        ]);
-
-        if (Array.isArray(transactionResponse)) {
-          setTransactions(transactionResponse.map(mapTransactionFromApi));
-          setTransactionOffset(transactionResponse.length);
-          setHasMoreTransactions(transactionResponse.length === 100);
+        const response = await requestJson(`${API_BASE}/transactions?limit=100&offset=0`);
+        if (!active) return;
+        if (Array.isArray(response)) {
+          setTransactions(response.map(mapTransactionFromApi));
+          setTransactionOffset(response.length);
+          setHasMoreTransactions(response.length === 100);
         }
+      } catch (error) {
+        reportFailure(`Unable to load transactions: ${error.message}`);
+      }
+    };
 
-        if (Array.isArray(budgetResponse)) {
-          setBudgets(budgetResponse.map(mapBudgetFromApi));
+    const loadDashboardSummary = async () => {
+      try {
+        const response = await requestJson(`${API_BASE}/dashboard`);
+        if (active) setDashboardSummary(response);
+      } catch (error) {
+        reportFailure(`Unable to load dashboard summary: ${error.message}`);
+      }
+    };
+
+    const loadBudgets = async () => {
+      try {
+        const response = await requestJson(`${API_BASE}/budgets`);
+        if (active && Array.isArray(response)) {
+          setBudgets(response.map(mapBudgetFromApi));
         }
+      } catch (error) {
+        reportFailure(`Unable to load budgets: ${error.message}`);
+      }
+    };
 
-        if (Array.isArray(goalsResponse)) {
+    const loadSavingsGoals = async () => {
+      try {
+        const response = await requestJson(`${API_BASE}/goals`);
+        if (active && Array.isArray(response)) {
           setSavingsGoals(
-            goalsResponse.map((item) => ({
+            response.map((item) => ({
               id: item.id,
               title: item.title,
               target: Number(item.target_amount),
@@ -430,24 +460,32 @@ function App() {
             })),
           );
         }
-        setWhatsappStatus(whatsappResponse);
-        setDashboardSummary(dashboardResponse);
       } catch (error) {
-        setTransactions([]);
-        setTransactionOffset(0);
-        setHasMoreTransactions(false);
-        setBudgets([]);
-        setSavingsGoals([]);
-        setWhatsappStatus(null);
-        setDashboardSummary(null);
-        setApiError(`Unable to load your account data: ${error.message}`);
+        reportFailure(`Unable to load savings goals: ${error.message}`);
       }
     };
 
-    loadData();
+    const loadWhatsAppStatus = async () => {
+      try {
+        const response = await requestJson(`${API_BASE}/whatsapp/status`);
+        if (active) setWhatsappStatus(response);
+      } catch (error) {
+        reportFailure(`Unable to load WhatsApp status: ${error.message}`);
+      }
+    };
+
+    void loadTransactions();
+    void loadDashboardSummary();
+    void loadBudgets();
+    void loadSavingsGoals();
+    void loadWhatsAppStatus();
+    return () => {
+      active = false;
+    };
   }, [activeUserId, authenticated, sessionValidated]);
 
   useEffect(() => {
+    if (location.pathname !== '/reports') return undefined;
     if (!authenticated || !sessionValidated || !reportStart || !reportEnd || reportStart > reportEnd) {
       setReportSummaryApi(null);
       return undefined;
@@ -467,7 +505,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, [activeUserId, authenticated, financialDataVersion, reportEnd, reportStart, sessionValidated]);
+  }, [activeUserId, authenticated, financialDataVersion, location.pathname, reportEnd, reportStart, sessionValidated]);
 
   const totalIncome = useMemo(() => sumAmounts(transactions, 'income'), [transactions]);
   const totalExpenses = useMemo(() => sumAmounts(transactions, 'expense'), [transactions]);
@@ -701,14 +739,16 @@ function App() {
     }
     setActiveUserId(Number(user.id));
     setAuthenticated(true);
-    setSessionValidated(false);
+    setSessionValidated(true);
   };
 
   const handleSubmitAuth = async (event) => {
     event.preventDefault();
     setApiError('');
-    if (!validateAuth() || authSubmitting) return;
+    if (authSubmitLock.current || authSubmitting) return;
+    if (!validateAuth()) return;
 
+    authSubmitLock.current = true;
     setAuthSubmitting(true);
     try {
       const payload = {
@@ -742,6 +782,7 @@ function App() {
         setAuthErrors((prev) => ({ ...prev, password: message }));
       }
     } finally {
+      authSubmitLock.current = false;
       setAuthSubmitting(false);
     }
   };
