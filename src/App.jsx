@@ -260,6 +260,7 @@ function App() {
   const [authForm, setAuthForm] = useState({
     email: '',
     phone_number: '',
+    identifier: '',
     password: '',
     name: '',
   });
@@ -718,11 +719,19 @@ function App() {
 
   const validateAuth = () => {
     const errors = {};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())) {
-      errors.email = 'Enter a valid email address.';
-    }
-    if (!/^\+[1-9]\d{7,14}$/.test(authForm.phone_number.replace(/[\s().-]/g, ''))) {
-      errors.phone_number = 'Enter an international phone number, such as +919876543210.';
+    if (authMode === 'register') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())) {
+        errors.email = 'Enter a valid email address.';
+      }
+      if (!/^\+[1-9]\d{7,14}$/.test(authForm.phone_number.replace(/[\s().-]/g, ''))) {
+        errors.phone_number = 'Enter an international phone number, such as +919876543210.';
+      }
+    } else if (authForm.identifier.includes('@')) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.identifier.trim())) {
+        errors.identifier = 'Enter a valid email address or phone number.';
+      }
+    } else if (!/^\+[1-9]\d{7,14}$/.test(authForm.identifier.replace(/[\s().-]/g, ''))) {
+      errors.identifier = 'Enter an email address or international phone number.';
     }
     if (!authForm.password || authForm.password.length < 8) {
       errors.password = 'Password must contain at least 8 characters.';
@@ -768,8 +777,7 @@ function App() {
           full_name: authForm.name.trim(),
         }
         : {
-          email: authForm.email.trim().toLowerCase(),
-          phone_number: authForm.phone_number.trim(),
+          email_or_phone: authForm.identifier.trim(),
           password: authForm.password,
         };
 
@@ -2055,32 +2063,50 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, authSubmitting,
               </div>
             )}
 
-            <div className="field-group">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={authForm.email}
-                onChange={(event) => handleAuthInput('email', event.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-              {authErrors.email && <small>{authErrors.email}</small>}
-            </div>
-            <div className="field-group">
-              <label htmlFor="phone-number">Phone number</label>
-              <input
-                id="phone-number"
-                type="tel"
-                autoComplete="tel"
-                value={authForm.phone_number}
-                onChange={(event) => handleAuthInput('phone_number', event.target.value)}
-                placeholder="+91 98765 43210"
-                required
-              />
-              {authErrors.phone_number && <small>{authErrors.phone_number}</small>}
-            </div>
+            {authMode === 'register' ? (
+              <>
+                <div className="field-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={authForm.email}
+                    onChange={(event) => handleAuthInput('email', event.target.value)}
+                    placeholder="you@example.com"
+                    required
+                  />
+                  {authErrors.email && <small>{authErrors.email}</small>}
+                </div>
+                <div className="field-group">
+                  <label htmlFor="phone-number">Phone number</label>
+                  <input
+                    id="phone-number"
+                    type="tel"
+                    autoComplete="tel"
+                    value={authForm.phone_number}
+                    onChange={(event) => handleAuthInput('phone_number', event.target.value)}
+                    placeholder="+91 98765 43210"
+                    required
+                  />
+                  {authErrors.phone_number && <small>{authErrors.phone_number}</small>}
+                </div>
+              </>
+            ) : (
+              <div className="field-group">
+                <label htmlFor="email-or-phone">Email or phone number</label>
+                <input
+                  id="email-or-phone"
+                  type="text"
+                  autoComplete="username"
+                  value={authForm.identifier}
+                  onChange={(event) => handleAuthInput('identifier', event.target.value)}
+                  placeholder="you@example.com or +91 98765 43210"
+                  required
+                />
+                {authErrors.identifier && <small>{authErrors.identifier}</small>}
+              </div>
+            )}
 
             <div className="field-group">
               <label htmlFor="password">Password</label>
