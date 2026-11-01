@@ -2,17 +2,20 @@
 
 Audit date: 2026-11-01
 
-This report distinguishes measurements from source-code findings. The live checks
-were anonymous and did not create or modify production accounts or financial
-records. The code changes in this branch have not been deployed, so a production
-before-and-after comparison is not yet available.
+This report distinguishes measurements from source-code findings. The production
+changes were pushed to `main` and the live Vercel bundle was verified after
+deployment. Production authentication and finance API checks used a dedicated
+test account; all labeled test transactions, budget, and savings goal were
+deleted and their absence verified. The test account remains because the app
+does not provide an account-deletion endpoint.
 
 ## Production baseline
 
 Measurements were collected against `https://ruveon-ai.vercel.app/` and its
-configured Render API. Homepage requests were made twice in succession; API
-health and the unauthenticated current-user route were then measured once or
-twice. Browser timing is from two integrated-browser navigations.
+configured Render API, before and after the code deployment. Homepage requests
+were made twice in succession; API health and an unauthenticated current-user
+route were then measured before deployment. Browser timings are from
+integrated-browser navigations.
 
 | Operation | Measured before | Evidence and limitations |
 | --- | ---: | --- |
@@ -25,15 +28,18 @@ twice. Browser timing is from two integrated-browser navigations.
 | Render `/health` | 6,762 ms first request; 300 ms immediate repeat | Both HTTP 200. The large first/warm difference is consistent with a free-instance wake-up, but one sample does not prove cold-start time |
 | Authenticated API proxy check | 1,283 ms, HTTP 401 | `/api/v1/users/me` without credentials; not a measurement of a valid login |
 
-The deployed Render service is configured with `plan: free`. Its idle wake-up
-is a hosting limitation, not a database or frontend code delay. No paid service
-or keep-alive job was added.
+The Render service is configured with `plan: free`. Its slow first response is
+a hosting/startup limitation rather than homepage work; `/health` itself does
+not query the database. The measured first response may include post-deploy
+startup as well as a free-tier wake-up, so it is not attributed to either
+exclusively. No paid service or keep-alive job was added.
 
 The production JS and CSS responses used
 `Cache-Control: public, max-age=0, must-revalidate` despite content-hashed asset
 names. Returning visits therefore revalidated these assets. The Vercel
 configuration now assigns immutable one-year caching to `/assets/*`; HTML is
-left uncached. This response-header change must be verified after deployment.
+left uncached. After deployment, the production JS asset was confirmed to return
+`Cache-Control: public, max-age=31536000, immutable`.
 
 ## Findings and changes
 
@@ -85,8 +91,8 @@ left uncached. This response-header change must be verified after deployment.
   timeouts with logged errors. No application retry was added to these
   non-idempotent POSTs, where retrying could duplicate a reply or prolong a
   webhook request.
-- No production database query plan or authenticated production timing was
-  available, so no database latency reduction is claimed.
+- Production API timings are now listed below. No production database query
+  plan was available, so no database-query latency reduction is claimed.
 
 ## Local verification after changes
 
@@ -98,7 +104,7 @@ Uvicorn/Vite server. They are not production timings.
 | Signup to dashboard | 1,247 ms in one browser run on the final code |
 | Login to dashboard | 1,740 ms in one browser run on the final code |
 | Rapid double-click signup | One `POST /users`; dashboard opened |
-| Dashboard initial requests | Transactions, dashboard, budgets, goals, and WhatsApp status returned successfully; no `/users/me` immediately after fresh auth |
+| Dashboard initial requests | Transactions, dashboard, budgets, goals, and WhatsApp status returned successfully |
 | Reports | Report API returned HTTP 200 when `/reports` was opened |
 | Transaction creation in UI | HTTP 201 and the saved record appeared |
 | API transaction, budget, and savings-goal create/update/delete; reports | Local TestClient workflow passed |
@@ -109,18 +115,40 @@ Local SQLite request timings varied substantially between runs on this Windows
 workstation, so they are not presented as an improvement percentage or as a
 substitute for production measurements.
 
-## Before/after status and remaining work
+## Production measurements after deployment
 
-| Operation | Before | After |
+| Operation | Before | After deployment |
 | --- | --- | --- |
-| Homepage | Production measurements above | Not measured in production; caching config awaits deployment |
-| Signup and login | No valid production-account test performed | Local flows passed; production comparison unavailable |
-| Dashboard and reports | Authenticated production data unavailable | Local route/API checks passed; production comparison unavailable |
-| Transaction and budget mutations | Production records were not modified | Local create/update/delete tests passed; production comparison unavailable |
-| Render cold/warm behavior | 6,762 ms / 300 ms on health route | Not remeasured after deployment |
+| Homepage HTML | 606 ms first request; 94 ms immediate repeat | 689 ms in a later request |
+| Browser homepage load | Initial trace: 9,196 ms; reload trace: 1,573 ms | 1,633 ms load; 529 ms response start |
+| Initial JS/CSS | 107,213 B JS; 6,301 B CSS transferred | 107,239 B JS; CSS revalidated from cache at 300 B. JS response has immutable one-year caching |
+| Render health | 6,762 ms first; 300 ms warm | 44,613 ms first post-deploy request; 567 ms and 295 ms on subsequent warm requests |
+| Signup | No valid production-account measurement | 12,721 ms for the production signup API request; the dashboard request began immediately after signup returned |
+| Login | No valid production-account measurement | 1,391 ms login API; 1,604 ms from login submission to dashboard |
+| Authenticated user check | 1,283 ms without credentials (401; not a valid-auth comparison) | 1,377 ms first check; 474 ms on a later check |
+| Dashboard summary | No authenticated production measurement | 643 ms in an authenticated production request |
+| Transaction list | No authenticated production measurement | 558 ms; 545 ms after creating the test record |
+| Transaction create/update/delete | Not measured | 929 / 881 / 608 ms |
+| Budget list/create/update/delete | Not measured | 602 / 581 / 878 / 582 ms |
+| Savings-goal list/create/update/delete | Not measured | 499 / 500 / 1,328 / 547 ms |
+| Report | No authenticated production measurement | 862 ms |
 
-To complete the comparison, deploy these changes, then repeat the homepage
-trace and the authenticated flows using a designated production test account.
-Measure cold and warm Render requests separately, and verify the deployed
-`/assets/*` response header. The free Render plan can still introduce wake-up
-latency even after application optimizations.
+These are individual request observations, not percentiles or controlled
+benchmarks. Production API values include browser-to-Render network time. The
+signup call's 12.7 seconds is confirmed, but the available measurements do not
+isolate password hashing, database connect/query time, or instance wake-up; do
+not attribute that delay to one component without server-side tracing. The
+first post-deploy `/health` call taking 44.6 seconds, followed by sub-second
+warm calls, is strong evidence that Render startup/wake latency remains a major
+user-facing limitation.
+
+The production test account was created and successfully logged in. Its account
+record remains under the address provided for the test. The app has no user
+deletion route; deleting it would require an authorized database operation.
+Temporary test financial records were all deleted, and follow-up GET requests
+confirmed none remained.
+
+The free Render plan can still introduce long cold starts. Further production
+diagnosis of the 12.7-second signup requires Render request logs or
+instrumentation around password hashing and database operations. No production
+database query plan or authenticated cross-user probe was run.
