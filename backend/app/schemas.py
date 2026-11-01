@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, TypeAdapter, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
 
 CategoryName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 PHONE_NUMBER_PATTERN = re.compile(r"^\+[1-9]\d{7,14}$")
@@ -33,15 +33,18 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email_or_phone: str = Field(min_length=3, max_length=255)
+    email: EmailStr
+    phone_number: str
     password: str = Field(min_length=8)
 
-    @field_validator("email_or_phone")
+    @field_validator("email")
     @classmethod
-    def validate_email_or_phone(cls, value: str) -> str:
-        value = value.strip()
-        if "@" in value:
-            return str(TypeAdapter(EmailStr).validate_python(value)).lower()
+    def normalize_email(cls, value: str) -> str:
+        return str(value).lower()
+
+    @field_validator("phone_number", mode="before")
+    @classmethod
+    def validate_phone_number(cls, value: object) -> str:
         return normalize_phone_number(value)
 
 

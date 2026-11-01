@@ -146,27 +146,46 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> dict:
 
 @app.post(f"{settings.api_v1_prefix}/users/login", response_model=AuthResponse)
 def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> dict:
-    if "@" in payload.email_or_phone:
-        identity_filter = User.email == payload.email_or_phone
-    else:
-        identity_filter = User.phone_number == payload.email_or_phone
-    user = db.execute(select(User).where(identity_filter)).scalar_one_or_none()
+    user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email/phone number or password",
+            detail="Invalid email, phone number, or password",
         )
     valid, replacement_hash = verify_password(payload.password, user.password_hash)
     if not valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email/phone number or password",
+            detail="Invalid email, phone number, or password",
+        )
+    if user.phone_number is None:
+        phone_owner = db.execute(
+            select(User.id).where(User.phone_number == payload.phone_number)
+        ).scalar_one_or_none()
+        if phone_owner is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email, phone number, or password",
+            )
+        user.phone_number = payload.phone_number
+    elif user.phone_number != payload.phone_number:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email, phone number, or password",
         )
     if replacement_hash:
         user.password_hash = replacement_hash
+    try:
+        access_token = create_access_token(db, user.id)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email, phone number, or password",
+        ) from exc
     return {
         "user": user,
-        "access_token": create_access_token(db, user.id),
+        "access_token": access_token,
         "session_idle_timeout_seconds": settings.session_idle_timeout_minutes * 60,
     }
 
