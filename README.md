@@ -22,7 +22,7 @@ The backend applies schema changes through Alembic. Before running it locally ag
 
 See [PERFORMANCE.md](./PERFORMANCE.md) for the measured production baseline, implemented optimizations, local verification, and deployment follow-up.
 
-Before inviting users, confirm the privacy contact in the notice is monitored, establish a reliable account-deletion and data-retention process, configure a persistent PostgreSQL database and production environment variables, and verify the deployed API and website together.
+Before inviting users, confirm the privacy contact in the notice is monitored, publish the database-provider backup retention policy, configure a persistent PostgreSQL database and production environment variables, and verify the deployed API and website together. Users can permanently delete their account and active Ruveon records from the Privacy page; provider backups and data already sent to third parties follow those providers' retention policies.
 
 ## Project layout
 

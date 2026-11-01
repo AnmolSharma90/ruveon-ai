@@ -1693,6 +1693,14 @@ img { max-width: 100%; display: block; }
   color: #ffd9d9;
 }
 
+.account-deleted-message {
+  padding: 12px 14px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 12px;
+  background: var(--green-soft);
+  color: #baf2d8;
+}
+
 .lending-layout {
   grid-template-columns: minmax(270px, 0.75fr) minmax(0, 1.5fr);
   align-items: start;

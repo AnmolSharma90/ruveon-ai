@@ -14,7 +14,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, s
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
@@ -46,6 +46,7 @@ from app.models import (
 )
 from app.schemas import (
     AuthResponse,
+    AccountDeletionRequest,
     BudgetCreate,
     BudgetRead,
     DashboardSummary,
@@ -174,6 +175,34 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> dict:
 @app.get(f"{settings.api_v1_prefix}/users/me", response_model=UserRead)
 def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@app.delete(f"{settings.api_v1_prefix}/users/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    payload: AccountDeletionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    valid, _ = verify_password(payload.password, current_user.password_hash)
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password is incorrect",
+        )
+
+    user_id = current_user.id
+    db.execute(delete(WhatsAppMessage).where(WhatsAppMessage.user_id == user_id))
+    db.execute(delete(WhatsAppLink).where(WhatsAppLink.user_id == user_id))
+    db.execute(delete(WhatsAppLinkChallenge).where(WhatsAppLinkChallenge.user_id == user_id))
+    db.execute(delete(LoanRepayment).where(LoanRepayment.user_id == user_id))
+    db.execute(delete(LendingRecord).where(LendingRecord.user_id == user_id))
+    db.execute(delete(Transaction).where(Transaction.user_id == user_id))
+    db.execute(delete(Budget).where(Budget.user_id == user_id))
+    db.execute(delete(SavingsGoal).where(SavingsGoal.user_id == user_id))
+    db.execute(delete(AuthSession).where(AuthSession.user_id == user_id))
+    db.execute(delete(User).where(User.id == user_id))
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post(f"{settings.api_v1_prefix}/users/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -912,9 +941,16 @@ async def receive_whatsapp_webhook(request: Request, db: Session = Depends(get_d
                 text = message.get("text", {}).get("body")
                 if not message_id or not whatsapp_id or not isinstance(text, str):
                     continue
+                linked_user_id = db.execute(
+                    select(WhatsAppLink.user_id).where(WhatsAppLink.whatsapp_id == whatsapp_id)
+                ).scalar_one_or_none()
                 message_record = db.get(WhatsAppMessage, message_id)
                 if message_record is None:
-                    message_record = WhatsAppMessage(message_id=message_id, status="processing")
+                    message_record = WhatsAppMessage(
+                        message_id=message_id,
+                        user_id=linked_user_id,
+                        status="processing",
+                    )
                     db.add(message_record)
                     try:
                         db.commit()
@@ -923,7 +959,11 @@ async def receive_whatsapp_webhook(request: Request, db: Session = Depends(get_d
                         message_record = db.get(WhatsAppMessage, message_id)
                         if message_record is None:
                             raise
-                elif message_record.status == "processed":
+                if message_record.user_id is None and linked_user_id is not None:
+                    message_record.user_id = linked_user_id
+                if message_record.status == "processed":
+                    if linked_user_id is not None:
+                        db.commit()
                     if message_record.reply_text:
                         try:
                             send_whatsapp_message(whatsapp_id, message_record.reply_text)
@@ -935,6 +975,11 @@ async def receive_whatsapp_webhook(request: Request, db: Session = Depends(get_d
                 message_record = db.get(WhatsAppMessage, message_id)
                 if message_record is None:
                     raise RuntimeError("WhatsApp message idempotency record disappeared during processing")
+                linked_user_id = db.execute(
+                    select(WhatsAppLink.user_id).where(WhatsAppLink.whatsapp_id == whatsapp_id)
+                ).scalar_one_or_none()
+                if linked_user_id is not None:
+                    message_record.user_id = linked_user_id
                 message_record.status = "processed"
                 message_record.reply_text = reply
                 db.commit()

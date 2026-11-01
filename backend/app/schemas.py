@@ -45,6 +45,11 @@ class UserLogin(BaseModel):
         return normalize_phone_number(value)
 
 
+class AccountDeletionRequest(BaseModel):
+    password: str = Field(min_length=8)
+    confirmation: Literal["DELETE"]
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

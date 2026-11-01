@@ -5,7 +5,7 @@ Ruveon is deployed as a static React website on Vercel and a Python FastAPI API 
 ## Before deploying
 
 1. Push this project to a GitHub repository. Do not commit `.env` files, API keys, WhatsApp tokens, or database files.
-2. Review the in-app `/privacy` notice. Confirm its listed privacy email is monitored, establish a working account/data deletion process and retention period, and update the notice with those details before inviting users.
+2. Review the in-app `/privacy` notice. Confirm its listed privacy email is monitored and publish the configured database provider's backup retention period before inviting users. The app provides password-confirmed self-service account deletion; provider backups and data already sent to WhatsApp or Google follow those providers' retention policies.
 3. Create a persistent PostgreSQL database with a provider such as Neon or Supabase. Copy its PostgreSQL connection URL. A local SQLite file or Render's temporary filesystem is not suitable for production data.
 4. Create a Render web service from this repository using the included `render.yaml` blueprint. Set `DATABASE_URL` to the PostgreSQL connection URL in the Render service environment.
 5. In Render, set `CORS_ORIGINS` to the exact website origin, currently `https://ruveon-ai.vercel.app` (no trailing slash). The API refuses to start in production with a wildcard CORS origin, SQLite, or an `AUTH_SECRET` shorter than 32 characters.

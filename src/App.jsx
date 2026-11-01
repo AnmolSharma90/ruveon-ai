@@ -845,6 +845,23 @@ function App() {
     navigate('/', { replace: true });
   };
 
+  const handleAccountDeleted = () => {
+    window.localStorage.removeItem(SESSION_KEY);
+    setAuthenticated(false);
+    setSessionValidated(true);
+    setActiveUserId(0);
+    setTransactions([]);
+    setTransactionOffset(0);
+    setHasMoreTransactions(false);
+    setBudgets([]);
+    setSavingsGoals([]);
+    setDashboardSummary(null);
+    setReportSummaryApi(null);
+    setWhatsappStatus(null);
+    setApiError('');
+    navigate('/login?accountDeleted=1', { replace: true });
+  };
+
   const refreshDashboardSummary = async () => {
     const updatedSummary = await requestJson(`${API_BASE}/dashboard`);
     setDashboardSummary(updatedSummary);
@@ -1145,7 +1162,10 @@ function App() {
         <Route path="/features/smart-budgeting" element={<FeaturePage feature="smart-budgeting" />} />
         <Route path="/features/savings-insights" element={<FeaturePage feature="savings-insights" />} />
         <Route path="/features/reports" element={<FeaturePage feature="reports" />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route
+          path="/privacy"
+          element={<PrivacyPage authenticated={authenticated} onAccountDeleted={handleAccountDeleted} />}
+        />
         <Route path="/login" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} authSubmitting={authSubmitting} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
         <Route path="/register" element={<AuthPage authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} authErrors={authErrors} authSubmitting={authSubmitting} handleAuthInput={handleAuthInput} handleSubmitAuth={handleSubmitAuth} showPassword={showPassword} setShowPassword={setShowPassword} authenticated={authenticated} />} />
         <Route
@@ -1534,7 +1554,33 @@ function LendingPage() {
   );
 }
 
-function PrivacyPage() {
+function PrivacyPage({ authenticated, onAccountDeleted }) {
+  const [deletionOpen, setDeletionOpen] = useState(false);
+  const [deletionPassword, setDeletionPassword] = useState('');
+  const [deletionConfirmation, setDeletionConfirmation] = useState('');
+  const [deletionError, setDeletionError] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async (event) => {
+    event.preventDefault();
+    setDeletionError('');
+    setDeletingAccount(true);
+    try {
+      await requestJson(`${API_BASE}/users/me`, {
+        method: 'DELETE',
+        body: JSON.stringify({
+          password: deletionPassword,
+          confirmation: deletionConfirmation,
+        }),
+      });
+      onAccountDeleted();
+    } catch (error) {
+      setDeletionError(`Account was not deleted: ${error.message}`);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   return (
     <main className="page-shell privacy-page">
       <section className="section">
@@ -1551,11 +1597,12 @@ function PrivacyPage() {
           </p>
 
           <div className="privacy-launch-warning" role="note">
-            <strong>Before inviting the public</strong>
+            <strong>Deletion and retention</strong>
             <p>
-              Account deletion is not currently self-service. Confirm the privacy inbox below is
-              monitored, and establish a reliable account deletion and data-retention process before
-              inviting the public.
+              Account deletion permanently removes your Ruveon account and associated records from
+              the active database. Hosting-provider backups and data already processed by WhatsApp
+              or Google may follow their own retention policies; deletion through Ruveon cannot
+              remove those copies.
             </p>
           </div>
 
@@ -1619,10 +1666,11 @@ function PrivacyPage() {
               no online service can promise absolute security.
             </p>
             <p>
-              The app currently has no account deletion control. Until an operator contact and
-              deletion process are published, it cannot offer a reliable self-service deletion
-              request. The operator must establish how account records and backups are deleted and
-              update this notice with the applicable retention period before inviting users.
+              When you delete your account, Ruveon removes your account profile, sign-in sessions,
+              transactions, budgets, savings goals, lending records, WhatsApp link, and associated
+              reply-cache records from the active database. Database-provider backups may retain
+              copies until they expire under that provider’s retention policy. Requests to remove
+              information held by WhatsApp or Google must be handled under those providers’ policies.
             </p>
           </section>
 
@@ -1634,6 +1682,72 @@ function PrivacyPage() {
               email <a href="mailto:ruveonai@gmail.com">ruveonai@gmail.com</a>.
             </p>
           </section>
+
+          {authenticated && (
+            <section className="privacy-policy-section account-deletion-section">
+              <h2>Delete your account</h2>
+              {!deletionOpen ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost danger"
+                  onClick={() => setDeletionOpen(true)}
+                >
+                  <Trash2 size={16} /> Delete account
+                </button>
+              ) : (
+                <form className="stack-form" onSubmit={handleDeleteAccount}>
+                  <p>
+                    This permanently deletes your account and its Ruveon financial records. This
+                    cannot be undone. Enter your password and type <strong>DELETE</strong> to confirm.
+                  </p>
+                  {deletionError && <p className="form-error" role="alert">{deletionError}</p>}
+                  <div className="field-group">
+                    <label htmlFor="delete-account-password">Current password</label>
+                    <input
+                      id="delete-account-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={deletionPassword}
+                      onChange={(event) => setDeletionPassword(event.target.value)}
+                      required
+                      minLength={8}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label htmlFor="delete-account-confirmation">Type DELETE to confirm</label>
+                    <input
+                      id="delete-account-confirmation"
+                      value={deletionConfirmation}
+                      onChange={(event) => setDeletionConfirmation(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="button-row">
+                    <button
+                      type="submit"
+                      className="btn btn-ghost danger"
+                      disabled={deletingAccount || deletionConfirmation !== 'DELETE'}
+                    >
+                      {deletingAccount ? 'Deleting account…' : 'Permanently delete account'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={deletingAccount}
+                      onClick={() => {
+                        setDeletionOpen(false);
+                        setDeletionPassword('');
+                        setDeletionConfirmation('');
+                        setDeletionError('');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
+          )}
 
           <p className="privacy-disclaimer">
             Ruvi provides general informational responses, not professional financial, tax, or
@@ -1727,6 +1841,12 @@ function Header({ authenticated, onLogout, onConnectWhatsApp, whatsappStatus }) 
               Log out
             </button>
           </div>
+        )}
+
+        {new URLSearchParams(location.search).get('accountDeleted') === '1' && (
+          <p className="account-deleted-message" role="status">
+            Your account and associated Ruveon data have been permanently deleted.
+          </p>
         )}
 
         <button

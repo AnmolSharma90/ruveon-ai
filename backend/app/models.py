@@ -177,5 +177,6 @@ class WhatsAppMessage(Base):
     __tablename__ = "whatsapp_messages"
 
     message_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="processed")
     reply_text: Mapped[str | None] = mapped_column(Text, nullable=True)
