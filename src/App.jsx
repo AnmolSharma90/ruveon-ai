@@ -2163,7 +2163,7 @@ function AuthPage({ authMode, setAuthMode, authForm, authErrors, authSubmitting,
 
           {location.state?.sessionExpired && (
             <p className="session-expired-message" role="alert">
-              Your session has expired. Please log in again.
+              Your session expired: Authentication required.
             </p>
           )}
 
