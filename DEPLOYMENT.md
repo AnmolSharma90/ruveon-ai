@@ -1,6 +1,10 @@
 # Ruveon website deployment
 
-Ruveon is deployed as a static React website on Vercel and a Python FastAPI API on Render. The browser calls the Render API using `VITE_API_BASE_URL`; secrets stay in Render environment variables and are never included in the frontend bundle.
+Ruveon is deployed as a static React website on Vercel at
+`https://ruveon-ai.vercel.app/` and a Python FastAPI API on Render at
+`https://ruveon-api.onrender.com/`. The browser calls the Render API using
+`VITE_API_BASE_URL`; secrets stay in Render environment variables and are never
+included in the frontend bundle.
 
 ## Before deploying
 
@@ -28,6 +32,13 @@ Render runs the Alembic migrations before starting FastAPI. For a local existing
 
 Ruvi uses Gemini to interpret English and Hinglish WhatsApp messages, answer account questions using a compact account summary, and classify requested transactions, loans, repayments, and transaction corrections. The website discloses that the message text and limited account context are sent to Google. Validated actions are saved to the same database as website records. Do not send bank credentials, card numbers, passwords, or other secrets to the chatbot. Before a public launch, review the in-app privacy notice and publish retention and account-deletion procedures.
 
+After connecting, verify these actions using test messages and check the matching
+records in Ruveon: ask for current-month spending or budget, record a clearly
+specified income/expense, record money lent and a repayment, and correct an
+unambiguous transaction. Test an unclear request and confirm Ruvi asks a
+clarifying question instead of saving a guessed record. Remove test financial
+records afterward.
+
 ## Official WhatsApp Cloud API setup
 
 An ordinary WhatsApp or WhatsApp Business mobile app number is not enough to run an automated bot. Ruvi uses Meta's official WhatsApp Business Platform Cloud API.
@@ -45,7 +56,7 @@ An ordinary WhatsApp or WhatsApp Business mobile app number is not enough to run
    - `WHATSAPP_DISPLAY_NUMBER` to the WhatsApp sender's international number digits, without `+`, spaces, or punctuation.
    - `WHATSAPP_VERIFY_TOKEN` to a long, random value you create. Use the same value when verifying the webhook in Meta.
    - `WHATSAPP_APP_SECRET` to the Meta app secret from **App settings > Basic** in the Meta App Dashboard (use **Show** if needed).
-4. Configure the Meta WhatsApp webhook callback URL as `https://<your-render-service>.onrender.com/api/v1/webhooks/whatsapp`, use the same verify token, and subscribe the webhook to the `messages` field.
+4. Configure the Meta WhatsApp webhook callback URL as `https://ruveon-api.onrender.com/api/v1/webhooks/whatsapp`, use the same verify token, and subscribe the webhook to the `messages` field.
 5. After Render redeploys, sign in to Ruveon and choose **Connect WhatsApp** in the dashboard header. This opens a chat with Ruvi and a pre-filled account-link code. Press **Send** in WhatsApp to finish linking. Codes expire after 10 minutes. WhatsApp is optional; users can continue in the dashboard without connecting it.
 6. Send Ruvi a text question. Send `unlink` to disconnect the WhatsApp number from that Ruveon account.
 
@@ -76,8 +87,8 @@ The root `.env.example` lists the variables for reference. In production, enter 
 ## What is working versus what still needs outside setup
 
 - The repository contains the frontend/API wiring, token-protected API routes, database migrations, Gemini request handler, WhatsApp webhook, WhatsApp account linking, Vercel SPA routing, and Render service configuration.
-- The public repository is prepared, but live deployment still requires importing it into Vercel and Render, a persistent PostgreSQL database, production environment variables, and verification against those live services.
-- Automated WhatsApp requires Meta's business onboarding, a sender number, approved/valid credentials, and webhook subscription. Until configured, website login should continue to the dashboard rather than opening WhatsApp.
-- The WhatsApp bot currently answers finance questions from a summary; it does not create or edit transactions by interpreting chat messages.
-- The in-app privacy notice is available at `/privacy`. Confirm its privacy contact remains monitored and establish a reliable account/data deletion process and retention policy before public launch.
+- The website and API are deployed at the production URLs above. Continue using the setup steps when changing or replacing their hosting configuration.
+- WhatsApp still requires Meta business onboarding, a sender number, valid credentials in Render, a verified webhook subscription, a configured Gemini API key, and end-to-end testing. Until all required credentials are present, the dashboard reports WhatsApp as unavailable and normal website login still works.
+- Ruvi can answer finance questions and, after classifying and validating a request, record transactions, loans and repayments, or edit an unambiguous transaction. It asks for clarification when key details are missing or ambiguous.
+- The in-app `/privacy` notice is available, and users can permanently delete their account and active Ruveon records. Confirm the contact email is monitored and publish the database provider's backup-retention period before public launch.
 - Provider plans, free quotas, and WhatsApp charges depend on the current provider rules and usage. Check the linked official pricing pages before launch.
