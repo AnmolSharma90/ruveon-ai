@@ -365,7 +365,10 @@ function App() {
     let timer;
     const expireForInactivity = () => {
       requestJson(`${API_BASE}/users/logout`, { method: 'POST' }).catch((error) => {
-        setApiError(`Your session expired, but the server could not revoke it: ${error.message}`);
+        const message = error.message.toLowerCase();
+        if (!message.includes('authentication required') && !message.includes('session has expired')) {
+          setApiError(`You were signed out on this device, but the server could not be reached to revoke the session: ${error.message}`);
+        }
       });
       window.localStorage.removeItem(SESSION_KEY);
       window.dispatchEvent(new CustomEvent('ruveon:session-expired', { detail: 'inactivity timeout' }));

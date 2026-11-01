@@ -64,7 +64,7 @@ from app.schemas import (
     UserRead,
 )
 from app.ai import FinanceAction, generate_finance_action
-from app.security import create_access_token, get_current_user, hash_password, verify_password
+from app.security import create_access_token, get_current_user, hash_password, revoke_access_token, verify_password
 from app.whatsapp import send_whatsapp_message, verify_webhook_signature
 
 logging.basicConfig(level=logging.INFO)
@@ -209,20 +209,9 @@ def delete_account(
 def logout_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(logout_bearer_scheme),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ) -> Response:
     if credentials is not None:
-        try:
-            encoded_payload = credentials.credentials.split(".", 1)[0]
-            payload = json.loads(
-                base64.urlsafe_b64decode(encoded_payload + "=" * (-len(encoded_payload) % 4))
-            )
-            session = db.get(AuthSession, str(payload["jti"]))
-        except (ValueError, KeyError, TypeError, json.JSONDecodeError):
-            session = None
-        if session is not None and session.user_id == current_user.id:
-            session.revoked_at = int(time.time())
-            db.commit()
+        revoke_access_token(db, credentials.credentials)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

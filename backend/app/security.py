@@ -61,6 +61,47 @@ def create_access_token(db: Session, user_id: int) -> str:
     return f"{encoded_payload}.{encoded_signature}"
 
 
+def revoke_access_token(db: Session, encoded_token: str) -> bool:
+    if not settings.auth_secret:
+        return False
+    try:
+        encoded_payload, encoded_signature = encoded_token.split(".", 1)
+        expected = hmac.new(settings.auth_secret.encode(), encoded_payload.encode(), hashlib.sha256).digest()
+        supplied = base64.urlsafe_b64decode(encoded_signature + "=" * (-len(encoded_signature) % 4))
+        if not hmac.compare_digest(expected, supplied):
+            return False
+
+        payload = json.loads(
+            base64.urlsafe_b64decode(encoded_payload + "=" * (-len(encoded_payload) % 4))
+        )
+        user_id = payload["sub"]
+        session_id = payload["jti"]
+        if (
+            not isinstance(user_id, int)
+            or isinstance(user_id, bool)
+            or user_id < 1
+            or not isinstance(session_id, str)
+            or len(session_id) != 32
+            or uuid.UUID(hex=session_id).hex != session_id
+        ):
+            return False
+    except (ValueError, KeyError, TypeError, json.JSONDecodeError):
+        return False
+
+    session = db.execute(
+        select(AuthSession).where(
+            AuthSession.id == session_id,
+            AuthSession.user_id == user_id,
+        )
+    ).scalar_one_or_none()
+    if session is None:
+        return False
+    if session.revoked_at is None:
+        session.revoked_at = int(time.time())
+        db.commit()
+    return True
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
